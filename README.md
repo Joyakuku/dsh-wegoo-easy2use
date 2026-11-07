@@ -2,7 +2,6 @@
 
 <img src="docs/wordmark.png" width="420" alt="Wegoo" />
 
-
 wegoo（New-API 内核）的 DeepSeek Harness 插件：**图像 / 视频生成 + 逐次费用结算 + 预算闸门**。
 
 生成的图与视频落在 `<插件目录>/data/output/<日期>/`，花费实时汇总到右上角悬浮结算窗。
@@ -44,7 +43,7 @@ wegoo（New-API 内核）的 DeepSeek Harness 插件：**图像 / 视频生成 +
 
 ## 配置
 
-优先级：`settings`（宿主设置服务）> `data/config.json`（工具或手改）> 组合配置。
+读取时以 `settings`（宿主设置服务，初值取自组合配置）为底，再叠加 `data/config.json` —— **文件优先**，因为面板和 `wegoo_config` 都写这个文件。
 
 两条写入路径：
 
@@ -139,70 +138,87 @@ wegoo（New-API 内核）的 DeepSeek Harness 插件：**图像 / 视频生成 +
 ## 架构
 
 ```
-src/index.js    宿主插件入口：5 个工具、/dsh-wegoo 路由、会话事件、结算回填
-src/client.js   浏览器侧：详情页配置面板 + 右上角结算角标（纯 DOM，不用构建）
-src/relay.js    HTTP 客户端（生成、任务轮询、日志、二进制下载）
-src/catalog.js  模型目录：/v1/models × /api/pricing
-src/rates.js    事前计费推算 + 单价学习
-src/ledger.js   账本、限额判定、读取缓存
-src/session.js  会话 id 追踪（本次会话口径）
-src/specs.js    工具 schema 与描述
-src/config.js   schemastery 配置
-src/paths.js    数据目录与技能路径解析、旧目录迁移
-skills/         wegoo-visual 技能（随插件分发）
-scripts/sync.mjs 把源码同步进 profile 的安装副本
+src/index.js     宿主入口：5 个工具、/dsh-wegoo 路由、会话事件、结算回填
+src/client.js    浏览器侧：配置面板 + 结算角标（纯 DOM，无构建步骤）
+src/relay.js     HTTP 客户端：生成、任务轮询、日志、二进制下载
+src/catalog.js   模型目录：/v1/models × /api/pricing
+src/rates.js     事前估算 + 单价学习（QUOTA_PER_USD 的唯一定义处）
+src/ledger.js    账本、限额判定、读取缓存
+src/session.js   会话 id 追踪（本次会话口径）
+src/specs.js     工具 schema 与描述
+src/config.js    schemastery 配置
+src/paths.js     数据目录、技能路径、旧目录迁移
+skills/          wegoo-visual 技能（随插件分发）
+scripts/sync.mjs 把源码镜像到 profile 的安装副本
+test/            smoke / host / client 三套自检
 ```
 
 性能上做了三件事：账本读取按 `mtime+size` 缓存、角标与面板在数据未变化时不碰 DOM、
 `settleSince` 只在有未决子智能体时才请求 relay。
+
+## 开发约定
+
+### 装在哪
+
+插件是 profile 的 npm 依赖，装在 `<DSH_HOME>/profiles/<profile>/node_modules/<包名>`；
+源码在 `D:\Code_workspace\dsh_plugin\dsh-wegoo-easy2use`。两者是两份，**改完源码必须同步**。
+
+### 改完怎么生效
+
+| 改的是 | 生效方式 |
+|---|---|
+| `src/*.js`（宿主侧、面板、角标） | `npm run sync` → **重启 DSH** |
+| `skills/wegoo-visual/SKILL.md` | 写进 `~/.dsh/skills/wegoo-visual/` 后**热加载**，不用重启 |
+| `README.md`、`docs/` | `npm run sync`（只影响插件详情页的显示） |
+
+### 同步
+
+```bash
+npm run sync              # 目录按镜像同步，副本里多出来的文件会被删掉
+npm run sync -- --dry-run # 只看会动哪些
+```
+
+`data/` 完全不动——账本、API Key、视频校准、单价学习都在里面。
+
+### 自检
+
+```bash
+npm run test   # smoke（15 组断言）+ host（模拟 ctx 跑 apply）+ client（样式注入与作用域）
+```
+
+`node_modules/` 不入库。克隆后建一次软链，自检才能解析宿主自己的包：
+
+```bash
+ln -sfn ~/.dsh/profiles/node_modules/@deepseek-ai node_modules/@deepseek-ai
+```
+
+### 版本与发布
+
+- `package.json` 与 `dsh.plugin.json` 的 `version` 两处保持一致
+- `npm pack --dry-run` 核对打包内容；`files` 漏了 `docs` 会让 README 图片 404
+- 图标是 `icon.svg`（36×36），同时声明在 `package.json` 的 `icon` 字段与 `exports["./icon"]`
+
+### 路由契约
+
+面板不依赖宿主 RPC，走插件自己的 HTTP 前缀路由 `webServer.register({ kind: 'prefix', path: '/dsh-wegoo' })`：
+
+| 端点 | 作用 |
+|---|---|
+| `get` | 读配置（key 打码） |
+| `set` | 写 `data/config.json`，下一次工具调用生效 |
+| `models` | 用给定 key 拉模型列表与单价 |
+| `ledger` | `spent`（闸门口径，只含图/视频）、`spentAll`（含子智能体） |
+| `skill` | 读写 `wegoo-visual` 的 `description` |
+| `ping` | 客户端存活上报，写 `client-ping.log` |
+
+请求体 `{ type: 'client-request', rpcId, method, payload }`，
+响应 `{ type: 'server-response', rpcId, result: { ok, value | error } }`。
 
 ## 已知限制
 
 - **拿不到账户余额**：`sk-` 权限下 `/api/user/self` 返回 401，只能显示累计已花。
 - **子智能体花费只是记账**：异步执行、无法在中途拦住，所以不计入预算闸门；账本里仍然可见。
 - **技能是软约束**：模型可能该用不用，或不该用却用了；硬拦截只有确认卡片和预算闸门。
-
-## 自检
-
-```bash
-node test/smoke.mjs    # 预算 / 账本 / 计费推算（15 组断言）
-node test/host.mjs     # 模拟 ctx 跑 apply()，检查工具契约
-node test/client.mjs   # 浏览器侧：样式注入 + 面板只在本插件详情页渲染
-```
-
-自检要解析 DSH 自己的包（`@deepseek-ai/dsh-tools` 等）。`node_modules/` 不入库，克隆后建一次软链即可：
-
-```bash
-ln -sfn ~/.dsh/profiles/node_modules/@deepseek-ai node_modules/@deepseek-ai
-```
-
-## 安装与开发
-
-插件装在 profile 的 `node_modules` 里：
-
-```
-<DSH_HOME>/profiles/<profile>/node_modules/dsh-wegoo-easy2use/
-```
-
-可以用 npm 的 `file:` 依赖（npm 会按 `files` 打包成实体包），也可以直接放实体目录。
-本地开发时源码在仓库里、跑起来的是安装副本，改完需要同步一次：
-
-```bash
-npm run sync          # 把 src/ skills/ docs/ icon.* README 镜像到 profile 副本
-npm run sync -- --dry-run
-npm run test          # smoke + host + client 三套自检
-```
-
-目录按镜像同步——副本里多出来的文件会被删掉；`data/`（账本、配置、生成产物）完全不动。
-
-已经接进 `~/.dsh/profiles/desktop`：
-
-```json
-"dependencies": { "dsh-wegoo-easy2use": "file:D:/Code_workspace/dsh_plugin/dsh-wegoo-easy2use" },
-"dsh": { "profile": { "bundles": [ ..., "dsh-wegoo-easy2use" ] } }
-```
-
-改完**重启 DSH** 生效（技能文件除外，它是热加载的）。
 
 ## 界面预览
 
