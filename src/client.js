@@ -861,8 +861,19 @@
         void tick();
       }
       /** 门卫：不是本插件的详情页就不渲染（本身不含 hooks，安全）。 */
+      /** 表单样式只在自己的详情页注入一次。 */
+      function ensureFormStyle() {
+        if (typeof document === 'undefined' || !document.head) return;
+        if (document.getElementById('wegoo-form-style')) return;
+        const style = document.createElement('style');
+        style.id = 'wegoo-form-style';
+        style.textContent = FORM_CSS;
+        document.head.appendChild(style);
+      }
+
       function WegooConfigGate(props) {
         if (pluginPackageName(props && props.subject) !== PACKAGE_NAME) return null;
+        ensureFormStyle();
         return h(WegooConfigPanel, props);
       }
 

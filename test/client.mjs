@@ -18,8 +18,9 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const source = fs.readFileSync(path.join(here, '..', 'src', 'client.js'), 'utf8');
 
 /** 最小元素桩：只提供 client.js 真正会碰到的属性与方法。 */
-function fakeEl() {
+function fakeEl(tag) {
   const el = {
+    tagName: String(tag || '').toUpperCase(),
     style: {},
     innerHTML: '',
     textContent: '',
@@ -36,6 +37,7 @@ function fakeEl() {
 }
 
 const registrations = [];
+const injectedStyles = [];
 let captured = null;
 
 const windowStub = {
@@ -65,8 +67,8 @@ Object.defineProperty(globalThis, 'navigator', {
 globalThis.document = {
   baseURI: 'http://localhost/',
   getElementById: () => null,
-  createElement: fakeEl,
-  head: { appendChild() {} },
+  createElement: (tag) => fakeEl(tag),
+  head: { appendChild: (node) => { injectedStyles.push(node); return node; } },
   body: { appendChild() {}, childElementCount: 0 },
   documentElement: { clientWidth: 1280 },
 };
@@ -107,6 +109,17 @@ assert.equal(
 // 自己的页面才渲染
 const own = component({ subject: { pkg: { name: 'dsh-wegoo-easy2use' } } });
 assert.ok(own && own.type, '自己的详情页必须渲染面板');
+
+// 样式必须是组件自己注入的：漏了这一步页面会完全没样式（真实踩过）
+const formStyle = injectedStyles.find((n) => n.id === 'wegoo-form-style');
+assert.ok(formStyle, '渲染本插件页面时必须注入 wegoo-form-style');
+assert.ok(String(formStyle.textContent).includes('.wgf-card'), '注入的样式里必须包含表单类');
+assert.ok(String(formStyle.textContent).includes('.wgf-sw'), '注入的样式里必须包含开关类');
+
+// 别人的页面不能注入任何样式
+const styleCount = injectedStyles.length;
+component({ subject: { pkg: { name: 'ds-harness-remote' } } });
+assert.equal(injectedStyles.length, styleCount, '其他插件页面不能注入 wegoo 样式');
 
 // 没有 subject 时也不能崩，且不渲染
 assert.equal(component({}), null, '缺少 subject 时应当安静地不渲染');
