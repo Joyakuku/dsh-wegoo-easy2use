@@ -2,10 +2,9 @@
 /**
  * sync.mjs — 把仓库里的改动同步到 DSH profile 的安装副本。
  *
- * 为什么需要它：DSH 读插件图标（以及其它包内文件）时会解析 realpath，
- * 软链指到 profile 之外会被拒绝，所以插件必须以**实体目录**装在
+ * 为什么需要它：插件以实体包安装在
  *   <DSH_HOME>/profiles/<profile>/node_modules/<包名>
- * 里。于是「改源码」和「跑起来的代码」是两份，需要显式同步。
+ * 里，而源码在仓库中，两者是两份。改完源码需要显式同步一次。
  *
  * 用法：
  *   node scripts/sync.mjs            # 同步到默认 profile（desktop）
@@ -63,9 +62,9 @@ if (!fs.existsSync(target)) {
 }
 const stat = fs.lstatSync(target);
 if (stat.isSymbolicLink()) {
-  console.error(`目标仍是符号链接：${target}`);
-  console.error('DSH 读不到 profile 之外的文件（图标会退化成默认占位）。');
-  console.error('先删掉它，把仓库内容复制成实体目录：');
+  console.error(`目标是符号链接：${target}`);
+  console.error('同步会把文件写进链接指向的目录（通常就是本仓库），这可能不是你想要的。');
+  console.error('要改成实体安装：');
   console.error(`  rm "${target}" && mkdir -p "${target}" && tar -cf - --exclude=.git --exclude=node_modules . | (cd "${target}" && tar -xf -)`);
   process.exit(1);
 }
