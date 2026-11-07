@@ -103,6 +103,29 @@
         .wgf-dirty.bad{color:#ff453a}
         .wgf-dirty.bad i{background:#ff453a}
         .wgf-acts{display:flex;gap:8px;align-items:center;flex:0 0 auto}
+        .wgf-gear{height:28px;padding:0 10px;border-radius:8px;border:1px solid #ececf1;background:#fff;
+          font-size:11.5px;color:#6e6e73;cursor:pointer;white-space:nowrap;font-family:inherit;margin-right:10px}
+        .wgf-gear:hover{background:#f4f4f7;color:#1d1d1f}
+        .wgf-gear.hot{border-color:#bfb6ff;color:#6e5cf6;background:#f1eeff}
+        .wgf-mask{position:fixed;inset:0;background:rgba(17,24,39,.28);display:flex;align-items:center;
+          justify-content:center;z-index:2147483600;padding:24px}
+        .wgf-modal{width:520px;max-width:100%;background:#fff;border-radius:16px;overflow:hidden;
+          box-shadow:0 24px 64px rgba(17,24,39,.24);font-size:12.5px;color:#1d1d1f}
+        .wgf-modal-h{padding:16px 20px 12px;border-bottom:1px solid #f4f4f7}
+        .wgf-modal-h b{font-size:13.5px;font-weight:650}
+        .wgf-modal-h p{margin-top:4px;font-size:11.5px;color:#98989d}
+        .wgf-modal-b{padding:16px 20px}
+        .wgf-opt{display:flex;gap:9px;align-items:flex-start;padding:10px 12px;border:1px solid #ececf1;
+          border-radius:11px;margin-bottom:9px;cursor:pointer;transition:border-color .15s,background .15s}
+        .wgf-opt.on{border-color:#bfb6ff;background:#faf8ff}
+        .wgf-opt input{margin-top:2px}
+        .wgf-opt .t{font-weight:550}
+        .wgf-opt .d{font-size:11px;color:#98989d;margin-top:2px;line-height:1.45}
+        .wgf-ta{width:100%;min-height:96px;padding:10px 11px;border:1px solid #ececf1;border-radius:10px;
+          font:12.5px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace;outline:none;resize:vertical;color:#1d1d1f}
+        .wgf-ta:focus{border-color:#bfb6ff;box-shadow:0 0 0 3px rgba(110,92,246,.14)}
+        .wgf-modal-f{display:flex;justify-content:flex-end;gap:8px;padding:12px 20px;background:#fcfcfd;
+          border-top:1px solid #ececf1}
         .wgf-warn{padding:16px 22px;color:#ff453a;font-size:12px}
         .wgf-loading{padding:22px;color:#98989d;font-size:12px}
       `;
@@ -119,11 +142,15 @@
             enabled: Boolean(cfg?.image?.enabled),
             defaultModel: cfg?.image?.defaultModel || '',
             maxUsdPerCall: numOr(cfg?.image?.maxUsdPerCall),
+            triggerMode: cfg?.image?.triggerMode === 'match' ? 'match' : 'always',
+            triggers: Array.isArray(cfg?.image?.triggers) ? cfg.image.triggers.slice() : [],
           },
           video: {
             enabled: Boolean(cfg?.video?.enabled),
             defaultModel: cfg?.video?.defaultModel || '',
             maxUsdPerCall: numOr(cfg?.video?.maxUsdPerCall),
+            triggerMode: cfg?.video?.triggerMode === 'match' ? 'match' : 'always',
+            triggers: Array.isArray(cfg?.video?.triggers) ? cfg.video.triggers.slice() : [],
           },
           limits: {
             perCallUsd: numOr(cfg?.limits?.perCallUsd),
@@ -157,6 +184,7 @@
         const [note, setNote] = React.useState('');
         const [busy, setBusy] = React.useState(false);
         const [touched, setTouched] = React.useState(false);
+        const [editing, setEditing] = React.useState(null);
 
         const loadModels = React.useCallback(async (kind, key) => {
           setLoading((l) => ({ ...l, [kind]: true }));
@@ -283,12 +311,25 @@
                   h('span', { className: `wgf-dot ${dotClass}` }),
                   title),
                 h('div', { className: 'wgf-sub' }, sub)),
-              h('button', {
-                type: 'button',
-                className: `wgf-sw${draftKind.enabled ? ' on' : ''}`,
-                'aria-label': `启用${title}`,
-                onClick: () => patch((n) => { n[kind].enabled = !n[kind].enabled; }),
-              })),
+              h('div', { style: { display: 'flex', alignItems: 'center' } },
+                h('button', {
+                  type: 'button',
+                  className: `wgf-gear${draftKind.triggerMode === 'match' ? ' hot' : ''}`,
+                  title: '配置在什么任务下才触发',
+                  onClick: () => setEditing({
+                    kind,
+                    mode: draftKind.triggerMode,
+                    text: (draftKind.triggers || []).join('\n'),
+                  }),
+                }, draftKind.triggerMode === 'match'
+                  ? `触发 · ${(draftKind.triggers || []).length} 个词`
+                  : '触发规则'),
+                h('button', {
+                  type: 'button',
+                  className: `wgf-sw${draftKind.enabled ? ' on' : ''}`,
+                  'aria-label': `启用${title}`,
+                  onClick: () => patch((n) => { n[kind].enabled = !n[kind].enabled; }),
+                }))),
 
             h('div', { className: 'wgf-field' },
               h('div', { className: 'wgf-lab' },
@@ -357,6 +398,64 @@
         const over = limitUsd > 0 && spentUsd >= limitUsd;
         const ratio = limitUsd > 0 ? Math.min(1, spentUsd / limitUsd) : 0;
 
+        const parseWords = (text) => Array.from(new Set(
+          String(text || '')
+            .split(/[\n,，、;；]+/)
+            .map((w) => w.trim())
+            .filter(Boolean),
+        ));
+
+        const modal = editing
+          ? h('div', {
+              className: 'wgf-mask',
+              onClick: (e) => { if (e.target === e.currentTarget) setEditing(null); },
+            },
+              h('div', { className: 'wgf-modal' },
+                h('div', { className: 'wgf-modal-h' },
+                  h('b', null, `${editing.kind === 'image' ? '图像生成' : '视频生成'} · 触发规则`),
+                  h('p', null, '决定什么样的任务下才允许生成；不配置则始终允许。')),
+                h('div', { className: 'wgf-modal-b' },
+                  h('div', {
+                    className: `wgf-opt${editing.mode === 'always' ? ' on' : ''}`,
+                    onClick: () => setEditing({ ...editing, mode: 'always' }),
+                  },
+                    h('input', { type: 'radio', readOnly: true, checked: editing.mode === 'always' }),
+                    h('div', null,
+                      h('div', { className: 't' }, '始终允许'),
+                      h('div', { className: 'd' }, '任何任务都可以调用，只受预算限额和确认弹窗约束。'))),
+                  h('div', {
+                    className: `wgf-opt${editing.mode === 'match' ? ' on' : ''}`,
+                    onClick: () => setEditing({ ...editing, mode: 'match' }),
+                  },
+                    h('input', { type: 'radio', readOnly: true, checked: editing.mode === 'match' }),
+                    h('div', null,
+                      h('div', { className: 't' }, '仅命中触发词时'),
+                      h('div', { className: 'd' }, '最近一条用户消息里出现任意一个词才允许生成，否则直接拒绝。'))),
+                  editing.mode === 'match'
+                    ? h('div', null,
+                        h('div', { style: { fontSize: 11.5, color: '#98989d', margin: '12px 0 6px' } },
+                          '触发词（一行一个，也可用逗号分隔）'),
+                        h('textarea', {
+                          className: 'wgf-ta',
+                          value: editing.text,
+                          placeholder: '产品图\nlogo\n做 demo\n配图',
+                          onChange: (e) => setEditing({ ...editing, text: e.target.value }),
+                        }))
+                    : null),
+                h('div', { className: 'wgf-modal-f' },
+                  h('button', { type: 'button', className: 'wgf-btn ghost', onClick: () => setEditing(null) }, '取消'),
+                  h('button', {
+                    type: 'button',
+                    className: 'wgf-btn primary',
+                    onClick: () => {
+                      const words = parseWords(editing.text);
+                      const nextMode = editing.mode === 'match' && words.length === 0 ? 'always' : editing.mode;
+                      patch((n) => { n[editing.kind].triggerMode = nextMode; n[editing.kind].triggers = words; });
+                      setEditing(null);
+                    },
+                  }, '确定'))))
+          : null;
+
         return h('div', { id: 'wegoo-form' },
           h('div', { className: 'wgf-card' },
             section('image', '图像生成', '固定价按张计费，报价即结算', 'img',
@@ -417,7 +516,8 @@
                   : note || (dirty ? '有未保存的更改' : '已保存')),
               h('div', { className: 'wgf-acts' },
                 h('button', { type: 'button', className: 'wgf-btn ghost', onClick: reset, disabled: busy || !dirty }, '重置'),
-                h('button', { type: 'button', className: 'wgf-btn primary', onClick: save, disabled: busy || !dirty }, busy ? '保存中…' : '保存')))));
+                h('button', { type: 'button', className: 'wgf-btn primary', onClick: save, disabled: busy || !dirty }, busy ? '保存中…' : '保存')))),
+          modal);
       }
       /** 插件路由调用：POST 到 /dsh-wegoo/<endpoint>，用宿主认的信封格式。 */
       async function rpc(endpoint, payload) {

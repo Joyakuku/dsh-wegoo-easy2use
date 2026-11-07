@@ -21,6 +21,8 @@ export const Config = z.object({
     apiKey: z.string().default('').description('图像分组的 API Key（sk-...）'),
     defaultModel: z.string().default('').description('默认图像模型；留空时用该 key 扫描到的第一个固定价模型'),
     maxUsdPerCall: z.number().default(0.5).description('图像单次绝对上限（USD），与全局单次上限取较小者'),
+    triggerMode: z.union(['always', 'match']).default('always').description('触发方式：always 始终允许；match 仅当任务命中触发词时'),
+    triggers: z.array(z.string()).default([]).description('触发词：任务描述里出现任意一个才允许生成（match 模式下生效）'),
   }).description('图像能力'),
 
   video: z.object({
@@ -28,6 +30,8 @@ export const Config = z.object({
     apiKey: z.string().default('').description('视频分组的 API Key（sk-...）'),
     defaultModel: z.string().default('').description('默认视频模型；留空时用该 key 扫描到的第一个模型'),
     maxUsdPerCall: z.number().default(1.5).description('视频单次绝对上限（USD），与全局单次上限取较小者'),
+    triggerMode: z.union(['always', 'match']).default('always').description('触发方式：always 始终允许；match 仅当任务命中触发词时'),
+    triggers: z.array(z.string()).default([]).description('触发词：任务描述里出现任意一个才允许生成（match 模式下生效）'),
   }).description('视频能力'),
 
   limits: z.object({
