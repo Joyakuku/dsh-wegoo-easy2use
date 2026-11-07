@@ -1,0 +1,28 @@
+<svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="wgTile" x1="5" y1="3" x2="31" y2="33" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8B6BFF"/>
+      <stop offset="0.5" stop-color="#5C6BFF"/>
+      <stop offset="1" stop-color="#1287F5"/>
+    </linearGradient>
+    <linearGradient id="wgGloss" x1="18" y1="2.5" x2="18" y2="17" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.30"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="wgStar" x1="18" y1="9" x2="18" y2="27" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#EAF0FF"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="3" y="3" width="30" height="30" rx="9.5" fill="url(#wgTile)"/>
+  <rect x="3" y="3" width="30" height="15" rx="9.5" fill="url(#wgGloss)"/>
+  <rect x="3.5" y="3.5" width="29" height="29" rx="9" stroke="#FFFFFF" stroke-opacity="0.22"/>
+
+  <!-- 主星芒：生成 -->
+  <path d="M18 7.6c.62 6.1 3.3 8.72 9.4 9.4-6.1.68-8.78 3.3-9.4 9.4-.62-6.1-3.3-8.72-9.4-9.4 6.1-.68 8.78-3.3 9.4-9.4Z"
+        fill="url(#wgStar)"/>
+
+  <!-- 伴星：一次生成的多张/多帧 -->
+  <circle cx="26.4" cy="9.9" r="1.5" fill="#FFFFFF" fill-opacity="0.95"/>
+</svg>

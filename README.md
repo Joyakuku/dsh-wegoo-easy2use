@@ -1,3 +1,5 @@
+<img src="icon.svg" width="72" height="72" alt="wegoo" align="left" hspace="12" vspace="4" />
+
 # dsh-wegoo-easy2use
 
 wegoo（New-API 内核）的 DeepSeek Harness 插件：**图像 / 视频生成 + 逐次费用结算 + 预算闸门**。

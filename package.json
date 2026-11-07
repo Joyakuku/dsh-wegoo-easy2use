@@ -10,6 +10,7 @@
     "./panel": "./src/panel.js"
   },
   "files": [
+    "icon.svg",
     "src",
     "cordis.patch.yml",
     "dsh.plugin.json",
