@@ -169,6 +169,27 @@ node test/host.mjs     # 模拟 ctx 跑 apply()，检查工具契约
 node test/client.mjs   # 浏览器侧：样式注入 + 面板只在本插件详情页渲染
 ```
 
+## 安装与开发
+
+插件必须装在 profile 的 `node_modules` 里，而且**必须是实体目录**：
+
+```
+<DSH_HOME>/profiles/<profile>/node_modules/dsh-wegoo-easy2use/
+```
+
+**不能用符号链接。** DSH 读插件图标时会解析 realpath，链接指向 profile 之外会被拒绝，
+图标退化成默认占位（这是实际踩过的坑：文件都在、`exports["./icon"]` 也对，就是不显示）。
+
+本地开发时源码在仓库里，跑起来的是安装副本，两者需要显式同步：
+
+```bash
+npm run sync          # 复制 src/ skills/ docs/ icon.* README 等到 profile 副本
+npm run sync -- --dry-run
+npm run test          # smoke + host + client 三套自检
+```
+
+`data/`（账本、配置、生成产物）不会被同步覆盖。
+
 ## 安装
 
 已经接进 `~/.dsh/profiles/desktop`：

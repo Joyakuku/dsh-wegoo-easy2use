@@ -40,5 +40,9 @@
     "video",
     "cost"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "scripts": {
+    "sync": "node scripts/sync.mjs",
+    "test": "node test/smoke.mjs && node test/host.mjs && node test/client.mjs"
+  }
 }
