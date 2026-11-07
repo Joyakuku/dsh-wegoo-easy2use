@@ -7,9 +7,11 @@
   "exports": {
     ".": "./src/index.js",
     "./client": "./src/client.js",
-    "./panel": "./src/panel.js"
+    "./icon": "./icon.png",
+    "./package.json": "./package.json"
   },
   "files": [
+    "icon.png",
     "icon.svg",
     "src",
     "cordis.patch.yml",
