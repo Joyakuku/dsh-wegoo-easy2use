@@ -28,32 +28,378 @@
         return typeof name === 'string' ? name : undefined;
       }
 
-      const s = {
-        card: { display: 'flex', flexDirection: 'column', gap: 8, padding: '10px 0' },
-        row: { display: 'flex', alignItems: 'center', gap: 8 },
-        label: { width: 120, flex: '0 0 auto', fontSize: 13, opacity: 0.85 },
-        input: {
-          flex: '1 1 auto', minWidth: 0, padding: '5px 8px', fontSize: 13,
-          border: '1px solid rgba(128,128,128,0.35)', borderRadius: 6,
-          background: 'transparent', color: 'inherit',
-        },
-        select: {
-          flex: '1 1 auto', minWidth: 0, padding: '5px 8px', fontSize: 13,
-          border: '1px solid rgba(128,128,128,0.35)', borderRadius: 6,
-          background: 'transparent', color: 'inherit',
-        },
-        group: { fontSize: 12, fontWeight: 600, opacity: 0.75, marginTop: 4 },
-        actions: { display: 'flex', gap: 8, alignItems: 'center', marginTop: 4 },
-        button: {
-          padding: '5px 12px', fontSize: 13, borderRadius: 6, cursor: 'pointer',
-          border: '1px solid rgba(128,128,128,0.35)', background: 'transparent', color: 'inherit',
-          whiteSpace: 'nowrap',
-        },
-        status: { fontSize: 12, opacity: 0.7 },
-        warn: { fontSize: 12, color: '#d4373f' },
-        hint: { fontSize: 11.5, opacity: 0.6 },
-      };
+      const FORM_CSS = `
+        #wegoo-form{font:12.5px/1.5 -apple-system,"SF Pro Text","Segoe UI",system-ui,"PingFang SC","Microsoft YaHei",sans-serif;
+          color:#1d1d1f;-webkit-font-smoothing:antialiased;max-width:760px}
+        #wegoo-form *{box-sizing:border-box}
+        .wgf-card{width:100%;background:#fff;border:1px solid #ececf1;border-radius:16px;
+          box-shadow:0 16px 42px rgba(17,24,39,.07),0 2px 6px rgba(17,24,39,.04);overflow:hidden}
+        .wgf-sec{padding:18px 22px 20px;border-bottom:1px solid #f4f4f7}
+        .wgf-sec:last-of-type{border-bottom:none}
+        .wgf-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+        .wgf-title{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:650}
+        .wgf-dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
+        .wgf-dot.img{background:#6e5cf6;box-shadow:0 0 0 3px #f1eeff}
+        .wgf-dot.vid{background:#0a84ff;box-shadow:0 0 0 3px #e9f3ff}
+        .wgf-dot.lim{background:#30c463;box-shadow:0 0 0 3px #eafaf0}
+        .wgf-sub{font-size:11.5px;color:#98989d;margin-top:3px;font-weight:400}
+        .wgf-sw{position:relative;width:38px;height:22px;border-radius:11px;background:#d8d8de;
+          transition:background .18s;flex:0 0 auto;border:none;padding:0;cursor:pointer}
+        .wgf-sw.on{background:#30c463}
+        .wgf-sw::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;
+          background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:transform .18s}
+        .wgf-sw.on::after{transform:translateX(16px)}
+        .wgf-field{display:grid;grid-template-columns:168px 1fr;gap:14px;align-items:start;margin-bottom:14px}
+        .wgf-field:last-child{margin-bottom:0}
+        .wgf-lab{padding-top:7px}
+        .wgf-lab b{font-weight:550;font-size:12.5px}
+        .wgf-lab span{display:block;font-size:11px;color:#98989d;margin-top:3px;line-height:1.45}
+        .wgf-ctl{display:flex;gap:8px;align-items:center;min-width:0}
+        .wgf-inp{flex:1;min-width:0;height:34px;padding:0 11px;border:1px solid #ececf1;border-radius:9px;background:#fff;
+          font-size:12.5px;color:#1d1d1f;outline:none;transition:border-color .15s,box-shadow .15s;
+          font-variant-numeric:tabular-nums;font-family:inherit}
+        .wgf-inp:focus{border-color:#bfb6ff;box-shadow:0 0 0 3px rgba(110,92,246,.14)}
+        .wgf-inp.mono{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px}
+        .wgf-btn{height:34px;padding:0 13px;border-radius:9px;border:1px solid #ececf1;background:#fff;font-size:12.5px;
+          color:#1d1d1f;cursor:pointer;white-space:nowrap;transition:background .15s;font-family:inherit}
+        .wgf-btn:hover:not(:disabled){background:#f4f4f7}
+        .wgf-btn:disabled{opacity:.5;cursor:default}
+        .wgf-btn.primary{background:#1d1d1f;border-color:#1d1d1f;color:#fff;font-weight:550}
+        .wgf-btn.primary:hover:not(:disabled){background:#000}
+        .wgf-btn.ghost{border-color:transparent;background:transparent;color:#6e6e73}
+        .wgf-sel{position:relative;flex:1;min-width:0}
+        .wgf-sel select{width:100%;height:34px;appearance:none;border:1px solid #ececf1;border-radius:9px;
+          background:#fff;font-size:12.5px;color:#1d1d1f;padding:0 108px 0 11px;outline:none;cursor:pointer;font-family:inherit}
+        .wgf-sel select:focus{border-color:#bfb6ff;box-shadow:0 0 0 3px rgba(110,92,246,.14)}
+        .wgf-sel .chev{position:absolute;right:92px;top:50%;transform:translateY(-50%);font-size:9px;
+          color:#98989d;pointer-events:none}
+        .wgf-tag{position:absolute;right:9px;top:50%;transform:translateY(-50%);font-size:10.5px;font-weight:600;
+          color:#1f9254;background:#eafaf0;padding:2px 7px;border-radius:6px;pointer-events:none;white-space:nowrap}
+        .wgf-hint{font-size:11px;color:#98989d;margin-top:6px;display:flex;align-items:center;gap:5px}
+        .wgf-hint.ok{color:#1f9254}
+        .wgf-hint.bad{color:#ff453a}
+        .wgf-hint i{width:4px;height:4px;border-radius:50%;background:currentColor;flex:0 0 auto}
+        .wgf-row3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+        .wgf-box{border:1px solid #ececf1;border-radius:11px;padding:10px 12px;background:#fff}
+        .wgf-box.err{border-color:#ff453a}
+        .wgf-box b{display:block;font-size:11px;color:#98989d;font-weight:500;margin-bottom:6px}
+        .wgf-box .v{display:flex;align-items:baseline;gap:5px}
+        .wgf-box input{border:none;outline:none;width:100%;font-size:16px;font-weight:650;letter-spacing:-.01em;
+          font-variant-numeric:tabular-nums;color:#1d1d1f;background:transparent;padding:0;font-family:inherit}
+        .wgf-box .u{font-size:11px;color:#98989d}
+        .wgf-meter{margin-top:12px}
+        .wgf-meter .top{display:flex;justify-content:space-between;font-size:11.5px;color:#6e6e73;margin-bottom:6px}
+        .wgf-meter .top b{color:#1d1d1f;font-weight:600;font-variant-numeric:tabular-nums}
+        .wgf-bar{height:6px;border-radius:3px;background:#f4f4f7;overflow:hidden}
+        .wgf-bar>i{display:block;height:100%;border-radius:3px;
+          background:linear-gradient(90deg,#30c463,#34d17a);transition:width .5s cubic-bezier(.22,1,.36,1)}
+        .wgf-bar>i.bad{background:linear-gradient(90deg,#ff453a,#ff6961)}
+        .wgf-foot{display:flex;align-items:center;justify-content:space-between;padding:13px 22px;
+          background:#fcfcfd;border-top:1px solid #ececf1;gap:12px}
+        .wgf-dirty{display:flex;align-items:center;gap:7px;font-size:11.5px;color:#b26a00;min-width:0}
+        .wgf-dirty i{width:6px;height:6px;border-radius:50%;background:#b26a00;flex:0 0 auto}
+        .wgf-dirty.saved{color:#98989d}
+        .wgf-dirty.saved i{background:#30c463}
+        .wgf-dirty.bad{color:#ff453a}
+        .wgf-dirty.bad i{background:#ff453a}
+        .wgf-acts{display:flex;gap:8px;align-items:center;flex:0 0 auto}
+        .wgf-warn{padding:16px 22px;color:#ff453a;font-size:12px}
+        .wgf-loading{padding:22px;color:#98989d;font-size:12px}
+      `;
 
+      const QUOTA = 500000;
+
+      const numOr = (v, fallback = 0) => (Number.isFinite(Number(v)) ? Number(v) : fallback);
+      const clone = (v) => JSON.parse(JSON.stringify(v));
+
+      /** 只取面板真正编辑的字段，用于脏状态比较。 */
+      function draftOf(cfg) {
+        return {
+          image: {
+            enabled: Boolean(cfg?.image?.enabled),
+            defaultModel: cfg?.image?.defaultModel || '',
+            maxUsdPerCall: numOr(cfg?.image?.maxUsdPerCall),
+          },
+          video: {
+            enabled: Boolean(cfg?.video?.enabled),
+            defaultModel: cfg?.video?.defaultModel || '',
+            maxUsdPerCall: numOr(cfg?.video?.maxUsdPerCall),
+          },
+          limits: {
+            perCallUsd: numOr(cfg?.limits?.perCallUsd),
+            totalUsd: numOr(cfg?.limits?.totalUsd),
+            totalScope: cfg?.limits?.totalScope || 'day',
+            perMinute: numOr(cfg?.limits?.perMinute),
+          },
+        };
+      }
+
+      /** 模型行的价格标签：固定价直接给单价，按量给个量级。 */
+      function priceTagOf(list, id) {
+        const found = (list || []).find((m) => m.id === id);
+        if (!found) return '';
+        if (Number.isFinite(Number(found.fixedUsd)) && Number(found.fixedUsd) > 0) {
+          return `$${Number(found.fixedUsd).toFixed(4)} / 次`;
+        }
+        const perMillion = /约\s*\$([\d.]+)\s*\/\s*1M/.exec(String(found.priceLabel || ''));
+        if (perMillion) return `按量 $${perMillion[1]}/M`;
+        return '按量计费';
+      }
+
+      function WegooConfigPanel() {
+        const [saved, setSaved] = React.useState(null);
+        const [draft, setDraft] = React.useState(null);
+        const [keys, setKeys] = React.useState({ image: '', video: '' });
+        const [models, setModels] = React.useState({ image: [], video: [] });
+        const [loading, setLoading] = React.useState({ image: false, video: false });
+        const [ledger, setLedger] = React.useState(null);
+        const [err, setErr] = React.useState('');
+        const [note, setNote] = React.useState('');
+        const [busy, setBusy] = React.useState(false);
+        const [touched, setTouched] = React.useState(false);
+
+        const loadModels = React.useCallback(async (kind, key) => {
+          setLoading((l) => ({ ...l, [kind]: true }));
+          try {
+            const r = await rpc('models', { kind, apiKey: key || '' });
+            const list = (r && r.models) || [];
+            setModels((m) => ({ ...m, [kind]: list }));
+            return list;
+          } catch (e) {
+            setNote(`拉取模型失败：${(e && e.message) || e}`);
+            return [];
+          } finally {
+            setLoading((l) => ({ ...l, [kind]: false }));
+          }
+        }, []);
+
+        React.useEffect(() => {
+          let alive = true;
+          rpc('get', {})
+            .then((r) => {
+              if (!alive || !r) return;
+              setSaved(r);
+              setDraft(draftOf(r));
+              if (r.imageKeySet) void loadModels('image', '');
+              if (r.videoKeySet) void loadModels('video', '');
+            })
+            .catch((e) => { if (alive) setErr(String((e && e.message) || e)); });
+          rpc('ledger', {})
+            .then((l) => { if (alive && l) setLedger(l); })
+            .catch(() => {});
+          return () => { alive = false; };
+        }, [loadModels]);
+
+        if (err) return h('div', { className: 'wgf-warn' }, `读取配置失败：${err}`);
+        if (!saved || !draft) return h('div', { className: 'wgf-loading' }, '读取配置…');
+
+        const patch = (fn) => {
+          setDraft((d) => {
+            const next = clone(d);
+            fn(next);
+            return next;
+          });
+          setTouched(true);
+          setNote('');
+        };
+
+        const dirty = JSON.stringify(draft) !== JSON.stringify(draftOf(saved)) || Boolean(keys.image || keys.video);
+        const limitsBad = !(draft.limits.perCallUsd > 0) || !(draft.limits.totalUsd > 0) || !(draft.limits.perMinute > 0);
+
+        const save = async () => {
+          if (limitsBad) {
+            setNote('限额必须都是大于 0 的数字');
+            return;
+          }
+          setBusy(true);
+          setNote('保存中…');
+          try {
+            await rpc('set', {
+              patch: {
+                image: { ...draft.image, apiKey: keys.image || '' },
+                video: { ...draft.video, apiKey: keys.video || '' },
+                limits: draft.limits,
+              },
+            });
+            const fresh = await rpc('get', {});
+            if (fresh) {
+              setSaved(fresh);
+              setDraft(draftOf(fresh));
+            }
+            setKeys({ image: '', video: '' });
+            setTouched(false);
+            setNote('已保存 · 下一次工具调用生效');
+            rpc('ledger', {}).then((l) => { if (l) setLedger(l); }).catch(() => {});
+          } catch (e) {
+            setNote(`保存失败：${(e && e.message) || e}`);
+          } finally {
+            setBusy(false);
+          }
+        };
+
+        const reset = () => {
+          setDraft(draftOf(saved));
+          setKeys({ image: '', video: '' });
+          setTouched(false);
+          setNote('');
+        };
+
+        const keyHint = (kind) => {
+          if (keys[kind]) return { cls: '', text: '未保存 · 输入后需点保存' };
+          if (saved && saved[`${kind}KeySet`]) {
+            const n = models[kind].length;
+            return { cls: 'ok', text: n > 0 ? `已设置 · 已拉取到 ${n} 个可用模型` : '已设置 · 尚未拉取模型列表' };
+          }
+          return { cls: 'bad', text: '未设置 · 填写后保存' };
+        };
+
+        const section = (kind, title, sub, dotClass, keyLabel, keyHintText, modelHint) => {
+          const draftKind = draft[kind];
+          const hint = keyHint(kind);
+          const tag = priceTagOf(models[kind], draftKind.defaultModel);
+          return h('section', { className: 'wgf-sec', key: kind },
+            h('div', { className: 'wgf-head' },
+              h('div', null,
+                h('div', { className: 'wgf-title' },
+                  h('span', { className: `wgf-dot ${dotClass}` }),
+                  title),
+                h('div', { className: 'wgf-sub' }, sub)),
+              h('button', {
+                type: 'button',
+                className: `wgf-sw${draftKind.enabled ? ' on' : ''}`,
+                'aria-label': `启用${title}`,
+                onClick: () => patch((n) => { n[kind].enabled = !n[kind].enabled; }),
+              })),
+
+            h('div', { className: 'wgf-field' },
+              h('div', { className: 'wgf-lab' },
+                h('b', null, 'API Key'),
+                h('span', null, keyLabel)),
+              h('div', null,
+                h('div', { className: 'wgf-ctl' },
+                  h('input', {
+                    className: 'wgf-inp mono',
+                    type: 'password',
+                    value: keys[kind],
+                    placeholder: saved && saved[`${kind}KeySet`] ? '已保存，留空即不修改' : 'sk-...',
+                    onChange: (e) => {
+                      const v = e.target.value;
+                      setKeys((k) => ({ ...k, [kind]: v }));
+                      setTouched(true);
+                      setNote('');
+                    },
+                  }),
+                  keys[kind]
+                    ? h('button', {
+                        type: 'button',
+                        className: 'wgf-btn',
+                        onClick: () => {
+                          setKeys((k) => ({ ...k, [kind]: '' }));
+                          setTouched(true);
+                        },
+                      }, '清空')
+                    : null),
+                h('div', { className: `wgf-hint ${hint.cls}` }, h('i'), hint.text))),
+
+            h('div', { className: 'wgf-field' },
+              h('div', { className: 'wgf-lab' },
+                h('b', null, '默认模型'),
+                h('span', null, modelHint)),
+              h('div', { className: 'wgf-ctl' },
+                h('div', { className: 'wgf-sel' },
+                  h('select', {
+                    value: draftKind.defaultModel,
+                    onChange: (e) => {
+                      const v = e.target.value;
+                      patch((n) => { n[kind].defaultModel = v; });
+                    },
+                  },
+                    draftKind.defaultModel
+                      ? null
+                      : h('option', { value: '' }, models[kind].length ? '请选择模型' : '先拉取模型列表'),
+                    models[kind].some((m) => m.id === draftKind.defaultModel)
+                      ? null
+                      : (draftKind.defaultModel
+                          ? h('option', { value: draftKind.defaultModel }, `${draftKind.defaultModel}（不在当前列表）`)
+                          : null),
+                    models[kind].map((m) => h('option', { key: m.id, value: m.id }, m.id))),
+                  h('span', { className: 'chev' }, '▾'),
+                  tag ? h('span', { className: 'wgf-tag' }, tag) : null),
+                h('button', {
+                  type: 'button',
+                  className: 'wgf-btn',
+                  disabled: loading[kind],
+                  onClick: () => loadModels(kind, keys[kind]),
+                }, loading[kind] ? '拉取中…' : '刷新'))));
+        };
+
+        const spentUsd = ledger ? Number(ledger.spent) || 0 : 0;
+        const limitUsd = ledger ? Number(ledger.limit) || 0 : 0;
+        const over = limitUsd > 0 && spentUsd >= limitUsd;
+        const ratio = limitUsd > 0 ? Math.min(1, spentUsd / limitUsd) : 0;
+
+        return h('div', { id: 'wegoo-form' },
+          h('div', { className: 'wgf-card' },
+            section('image', '图像生成', '固定价按张计费，报价即结算', 'img',
+              'Image Lite / Image Plus 分组', null, '影响 wegoo_image 的默认值'),
+            section('video', '视频生成', '按 token 计费，事前按秒单价推算', 'vid',
+              'Video Plus 分组', null, 'sd2.0-* 与 wan3-* 需要参考图'),
+
+            h('section', { className: 'wgf-sec', key: 'limits' },
+              h('div', { className: 'wgf-head' },
+                h('div', null,
+                  h('div', { className: 'wgf-title' },
+                    h('span', { className: 'wgf-dot lim' }),
+                    '预算限额'),
+                  h('div', { className: 'wgf-sub' }, '超限直接拒绝，不会发出上游请求'))),
+
+              h('div', { className: 'wgf-row3' },
+                h('div', { className: `wgf-box${draft.limits.perCallUsd > 0 ? '' : ' err'}` },
+                  h('b', null, '单次上限'),
+                  h('div', { className: 'v' },
+                    h('input', {
+                      type: 'number', min: '0', step: '0.01', value: draft.limits.perCallUsd,
+                      onChange: (e) => { const v = e.target.value; patch((n) => { n.limits.perCallUsd = v === '' ? 0 : Number(v); }); },
+                    }),
+                    h('span', { className: 'u' }, 'USD'))),
+                h('div', { className: `wgf-box${draft.limits.totalUsd > 0 ? '' : ' err'}` },
+                  h('b', null, '每日总额'),
+                  h('div', { className: 'v' },
+                    h('input', {
+                      type: 'number', min: '0', step: '0.5', value: draft.limits.totalUsd,
+                      onChange: (e) => { const v = e.target.value; patch((n) => { n.limits.totalUsd = v === '' ? 0 : Number(v); }); },
+                    }),
+                    h('span', { className: 'u' }, 'USD'))),
+                h('div', { className: `wgf-box${draft.limits.perMinute > 0 ? '' : ' err'}` },
+                  h('b', null, '每分钟次数'),
+                  h('div', { className: 'v' },
+                    h('input', {
+                      type: 'number', min: '1', step: '1', value: draft.limits.perMinute,
+                      onChange: (e) => { const v = e.target.value; patch((n) => { n.limits.perMinute = v === '' ? 0 : Number(v); }); },
+                    }),
+                    h('span', { className: 'u' }, '次')))),
+
+              ledger
+                ? h('div', { className: 'wgf-meter' },
+                    h('div', { className: 'top' },
+                      h('span', null, '今日已用 ', h('b', null, `$${spentUsd.toFixed(4)}`), ` / $${limitUsd.toFixed(4)}`),
+                      h('span', null, `剩余 $${Math.max(0, limitUsd - spentUsd).toFixed(4)}`)),
+                    h('div', { className: 'wgf-bar' },
+                      h('i', { className: over ? 'bad' : '', style: { width: `${(ratio * 100).toFixed(1)}%` } })))
+                : null),
+
+            h('div', { className: 'wgf-foot' },
+              h('div', {
+                className: `wgf-dirty${limitsBad && touched ? ' bad' : dirty ? '' : ' saved'}`,
+              },
+                h('i'),
+                limitsBad && touched
+                  ? '限额必须大于 0'
+                  : note || (dirty ? '有未保存的更改' : '已保存')),
+              h('div', { className: 'wgf-acts' },
+                h('button', { type: 'button', className: 'wgf-btn ghost', onClick: reset, disabled: busy || !dirty }, '重置'),
+                h('button', { type: 'button', className: 'wgf-btn primary', onClick: save, disabled: busy || !dirty }, busy ? '保存中…' : '保存')))));
+      }
       /** 插件路由调用：POST 到 /dsh-wegoo/<endpoint>，用宿主认的信封格式。 */
       async function rpc(endpoint, payload) {
         const rpcId = `wegoo-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -75,183 +421,8 @@
         return result.value;
       }
 
-      function Field({ label, value, onChange, type, placeholder }) {
-        return h('div', { style: s.row },
-          h('span', { style: s.label }, label),
-          h('input', {
-            style: s.input,
-            type: type || 'text',
-            value: value === undefined || value === null ? '' : String(value),
-            placeholder: placeholder || '',
-            onChange: (e) => onChange(e.target.value),
-          }));
-      }
-
-      function Toggle({ label, checked, onChange }) {
-        return h('div', { style: s.row },
-          h('span', { style: s.label }, label),
-          h('input', { type: 'checkbox', checked: !!checked, onChange: (e) => onChange(e.target.checked) }));
-      }
-
-      /** 模型下拉：列表来自服务端用该 key 扫出来的结果。 */
-      function ModelPicker({ label, value, options, loading, onRefresh, onPick }) {
-        const known = options.some((m) => m.id === value);
-        return h('div', { style: s.row },
-          h('span', { style: s.label }, label),
-          h('select', {
-            style: s.select,
-            value: known ? value : '',
-            onChange: (e) => onPick(e.target.value),
-          },
-            h('option', { value: '' }, options.length ? '（请选择）' : '（先点右侧获取）'),
-            ...options.map((m) => h('option', { key: m.id, value: m.id }, `${m.id} · ${m.priceLabel}`)),
-            known ? null : (value ? h('option', { key: '__cur', value }, `${value}（当前值，不在列表里）`) : null)),
-          h('button', { style: s.button, onClick: onRefresh, disabled: loading }, loading ? '获取中…' : '获取模型'));
-      }
-
-      function WegooConfigPanel() {
-        const [cfg, setCfg] = React.useState(null);
-        const [err, setErr] = React.useState('');
-        const [note, setNote] = React.useState('');
-        const [busy, setBusy] = React.useState(false);
-        const [models, setModels] = React.useState({ image: [], video: [] });
-        const [loading, setLoading] = React.useState({ image: false, video: false });
-        const [keys, setKeys] = React.useState({ image: '', video: '' });
-
-        const loadModels = React.useCallback(async (kind, apiKey) => {
-          setLoading((l) => ({ ...l, [kind]: true }));
-          try {
-            const r = await rpc('models', { kind, apiKey: apiKey || '' });
-            const list = (r && r.models) || [];
-            setModels((m) => ({ ...m, [kind]: list }));
-            setCfg((c) => {
-              if (!c) return c;
-              const cur = c[kind] || {};
-              if (cur.defaultModel) return c;
-              const first = list.find((x) => x.fixedUsd) || list[0];
-              if (!first) return c;
-              return { ...c, [kind]: { ...cur, defaultModel: first.id } };
-            });
-            return list;
-          } catch (e) {
-            setNote(`获取模型失败：${(e && e.message) || e}`);
-            return [];
-          } finally {
-            setLoading((l) => ({ ...l, [kind]: false }));
-          }
-        }, []);
-
-        React.useEffect(() => {
-          let alive = true;
-          rpc('get', {})
-            .then((r) => {
-              if (!alive || !r) return;
-              setCfg(r);
-              if (r.imageKeySet) void loadModels('image', '');
-              if (r.videoKeySet) void loadModels('video', '');
-            })
-            .catch((e) => { if (alive) setErr(String((e && e.message) || e)); });
-          return () => { alive = false; };
-        }, [loadModels]);
-
-        if (err) return h('div', { style: s.warn }, `读取配置失败：${err}`);
-        if (!cfg) return h('div', { style: s.status }, '读取配置…');
-
-        const patch = (fn) => {
-          setCfg((c) => {
-            const next = JSON.parse(JSON.stringify(c));
-            fn(next);
-            return next;
-          });
-          setNote('');
-        };
-        const img = cfg.image || {};
-        const vid = cfg.video || {};
-        const lim = cfg.limits || {};
-
-        const save = async () => {
-          setBusy(true);
-          setNote('保存中…');
-          try {
-            await rpc('set', {
-              patch: {
-                image: { enabled: !!img.enabled, apiKey: keys.image || img.apiKey || '', defaultModel: img.defaultModel || '', maxUsdPerCall: Number(img.maxUsdPerCall) || 0 },
-                video: { enabled: !!vid.enabled, apiKey: keys.video || vid.apiKey || '', defaultModel: vid.defaultModel || '', maxUsdPerCall: Number(vid.maxUsdPerCall) || 0 },
-                limits: {
-                  perCallUsd: Number(lim.perCallUsd) || 0,
-                  totalUsd: Number(lim.totalUsd) || 0,
-                  totalScope: lim.totalScope || 'day',
-                  perMinute: Number(lim.perMinute) || 0,
-                },
-              },
-            });
-            const fresh = await rpc('get', {});
-            if (fresh) setCfg(fresh);
-            setKeys({ image: '', video: '' });
-            setNote('已保存 · 下一次工具调用生效');
-          } catch (e) {
-            setNote(`保存失败：${(e && e.message) || e}`);
-          } finally {
-            setBusy(false);
-          }
-        };
-
-        const keyInput = (kind, current) => h('div', { style: s.row },
-          h('span', { style: s.label }, 'API Key'),
-          h('input', {
-            style: s.input,
-            type: 'password',
-            value: keys[kind],
-            placeholder: current ? '已设置（留空不改）' : 'sk-...',
-            onChange: (e) => {
-              const v = e.target.value;
-              setKeys((k) => ({ ...k, [kind]: v }));
-            },
-          }));
-
-        return h('div', { style: s.card },
-          h('div', { style: s.group }, '图像'),
-          h(Toggle, { label: '允许调用', checked: img.enabled, onChange: (v) => patch((n) => { n.image = { ...(n.image || {}), enabled: v }; }) }),
-          keyInput('image', img.apiKey),
-          h(ModelPicker, {
-            label: '默认模型',
-            value: img.defaultModel,
-            options: models.image,
-            loading: loading.image,
-            onRefresh: () => loadModels('image', keys.image),
-            onPick: (v) => patch((n) => { n.image = { ...(n.image || {}), defaultModel: v }; }),
-          }),
-
-          h('div', { style: s.group }, '视频'),
-          h(Toggle, { label: '允许调用', checked: vid.enabled, onChange: (v) => patch((n) => { n.video = { ...(n.video || {}), enabled: v }; }) }),
-          keyInput('video', vid.apiKey),
-          h(ModelPicker, {
-            label: '默认模型',
-            value: vid.defaultModel,
-            options: models.video,
-            loading: loading.video,
-            onRefresh: () => loadModels('video', keys.video),
-            onPick: (v) => patch((n) => { n.video = { ...(n.video || {}), defaultModel: v }; }),
-          }),
-
-          h('div', { style: s.group }, '限额'),
-          h(Field, { label: '单次上限 USD', value: lim.perCallUsd, onChange: (v) => patch((n) => { n.limits = { ...(n.limits || {}), perCallUsd: v }; }) }),
-          h(Field, { label: '总额上限 USD', value: lim.totalUsd, onChange: (v) => patch((n) => { n.limits = { ...(n.limits || {}), totalUsd: v }; }) }),
-          h(Field, { label: '每分钟次数', value: lim.perMinute, onChange: (v) => patch((n) => { n.limits = { ...(n.limits || {}), perMinute: v }; }) }),
-
-          h('div', { style: s.actions },
-            h('button', { style: s.button, onClick: save, disabled: busy }, busy ? '保存中…' : '保存'),
-            note ? h('span', { style: s.status }, note) : null),
-          h('div', { style: s.hint }, '填好 Key 先点「获取模型」拉列表再选；保存后下一次工具调用生效。'));
-      }
-
-      /**
-       * 右上角悬浮结算窗：纯 DOM，不依赖 slot / React，5 秒刷新。
-       *
-       * 动画不被轮询打断的关键：骨架只建一次，之后轮询只改 textContent / style.width / className，
-       * 列表行按 entry.id 复用，所以进行中的 transition / animation 不会因为节点被重建而中断。
-       */
       const EASE = 'cubic-bezier(.22,1,.36,1)';
+
       const BADGE_CSS = `
         #wegoo-cost-badge{position:fixed;top:104px;left:0;z-index:2147483647;
           font:12px/1.5 -apple-system,"SF Pro Text","Segoe UI",system-ui,"PingFang SC","Microsoft YaHei",sans-serif;
