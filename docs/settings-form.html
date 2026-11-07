@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<style>
+  :root{
+    --ink:#1d1d1f; --ink2:#6e6e73; --ink3:#98989d;
+    --line:#ececf1; --line2:#f4f4f7; --bg:#fafafc;
+    --green:#30c463; --green-bg:#eafaf0;
+    --violet:#6e5cf6; --violet-bg:#f1eeff;
+    --blue:#0a84ff; --blue-bg:#e9f3ff;
+    --amber:#b26a00; --amber-bg:#fff3e0;
+    --red:#ff453a;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:-apple-system,"SF Pro Text","Segoe UI",system-ui,"PingFang SC","Microsoft YaHei",sans-serif;
+    background:radial-gradient(1000px 500px at 12% -10%,#eef4ff 0%,transparent 60%),#fafafc;
+    color:var(--ink);padding:44px 48px;font-size:13px;-webkit-font-smoothing:antialiased;
+  }
+  .head{margin-bottom:22px}
+  .head h1{font-size:17px;font-weight:680;letter-spacing:-.01em}
+  .head p{color:var(--ink3);font-size:12px;margin-top:5px}
+
+  .card{width:760px;background:#fff;border:1px solid var(--line);border-radius:16px;
+        box-shadow:0 16px 42px rgba(17,24,39,.07),0 2px 6px rgba(17,24,39,.04);overflow:hidden}
+
+  .sec{padding:18px 22px 20px;border-bottom:1px solid var(--line2)}
+  .sec:last-of-type{border-bottom:none}
+  .sec-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .sec-title{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:650}
+  .sec-dot{width:8px;height:8px;border-radius:50%}
+  .sec-dot.img{background:var(--violet);box-shadow:0 0 0 3px var(--violet-bg)}
+  .sec-dot.vid{background:var(--blue);box-shadow:0 0 0 3px var(--blue-bg)}
+  .sec-dot.lim{background:var(--green);box-shadow:0 0 0 3px var(--green-bg)}
+  .sec-sub{font-size:11.5px;color:var(--ink3);margin-top:3px;font-weight:400}
+
+  /* 开关 */
+  .sw{position:relative;width:38px;height:22px;border-radius:11px;background:#d8d8de;transition:background .18s;flex:0 0 auto}
+  .sw.on{background:var(--green)}
+  .sw::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;
+    background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:transform .18s}
+  .sw.on::after{transform:translateX(16px)}
+
+  .field{display:grid;grid-template-columns:168px 1fr;gap:14px;align-items:start;margin-bottom:14px}
+  .field:last-child{margin-bottom:0}
+  .lab{padding-top:7px}
+  .lab b{font-weight:550;font-size:12.5px}
+  .lab span{display:block;font-size:11px;color:var(--ink3);margin-top:3px;line-height:1.45}
+
+  .ctl{display:flex;gap:8px;align-items:center;min-width:0}
+  .inp{flex:1;min-width:0;height:34px;padding:0 11px;border:1px solid var(--line);border-radius:9px;
+       background:#fff;font-size:12.5px;color:var(--ink);outline:none;transition:border-color .15s,box-shadow .15s;
+       font-variant-numeric:tabular-nums}
+  .inp:focus{border-color:#bfb6ff;box-shadow:0 0 0 3px rgba(110,92,246,.14)}
+  .inp.mono{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;letter-spacing:.02em}
+  .inp.err{border-color:var(--red);box-shadow:0 0 0 3px rgba(255,69,58,.12)}
+
+  .btn{height:34px;padding:0 13px;border-radius:9px;border:1px solid var(--line);background:#fff;
+       font-size:12.5px;color:var(--ink);cursor:pointer;white-space:nowrap;transition:background .15s}
+  .btn:hover{background:var(--line2)}
+  .btn.primary{background:var(--ink);border-color:var(--ink);color:#fff;font-weight:550}
+  .btn.primary:hover{background:#000}
+  .btn.ghost{border-color:transparent;background:transparent;color:var(--ink2)}
+  .btn.ghost:hover{background:var(--line2)}
+
+  .sel{position:relative;flex:1;min-width:0}
+  .sel .inp{width:100%;padding-right:78px;appearance:none;cursor:pointer}
+  .sel .tag{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:10.5px;
+            color:var(--green);background:var(--green-bg);padding:2px 7px;border-radius:6px;font-weight:600;pointer-events:none}
+  .sel::after{content:"▾";position:absolute;right:9px;top:50%;transform:translateY(-50%);font-size:9px;color:var(--ink3);pointer-events:none}
+  .sel.with-tag::after{display:none}
+
+  .key{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
+  .hint{font-size:11px;color:var(--ink3);margin-top:6px;display:flex;align-items:center;gap:5px}
+  .hint.ok{color:#1f9254}
+  .hint.bad{color:var(--red)}
+  .hint i{width:4px;height:4px;border-radius:50%;background:currentColor;font-style:normal;flex:0 0 auto}
+
+  .row3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .box{border:1px solid var(--line);border-radius:11px;padding:10px 12px;background:#fff}
+  .box b{display:block;font-size:11px;color:var(--ink3);font-weight:500;margin-bottom:6px}
+  .box .v{display:flex;align-items:baseline;gap:5px}
+  .box .v input{border:none;outline:none;width:100%;font-size:16px;font-weight:650;letter-spacing:-.01em;
+                font-variant-numeric:tabular-nums;color:var(--ink);background:transparent}
+  .box .v span{font-size:11px;color:var(--ink3)}
+
+  .meter{margin-top:12px}
+  .meter .top{display:flex;justify-content:space-between;font-size:11.5px;color:var(--ink2);margin-bottom:6px}
+  .meter .top b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+  .bar{height:6px;border-radius:3px;background:var(--line2);overflow:hidden}
+  .bar>i{display:block;height:100%;border-radius:3px;background:linear-gradient(90deg,var(--green),#34d17a)}
+
+  .foot{display:flex;align-items:center;justify-content:space-between;padding:13px 22px;
+        background:#fcfcfd;border-top:1px solid var(--line)}
+  .dirty{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--amber)}
+  .dirty i{width:6px;height:6px;border-radius:50%;background:var(--amber)}
+  .acts{display:flex;gap:8px}
+</style>
+</head>
+<body>
+
+<div class="head">
+  <h1>wegoo 设置</h1>
+  <p>插件详情页 · 配置卡片</p>
+</div>
+
+<div class="card">
+
+  <!-- 图像 -->
+  <section class="sec">
+    <div class="sec-head">
+      <div>
+        <div class="sec-title"><span class="sec-dot img"></span>图像生成</div>
+        <div class="sec-sub">固定价按张计费，报价即结算</div>
+      </div>
+      <div class="sw on"></div>
+    </div>
+
+    <div class="field">
+      <div class="lab"><b>API Key</b><span>Image Lite / Image Plus 分组</span></div>
+      <div>
+        <div class="ctl">
+          <div class="key"><input class="inp mono" type="password" value="sk-RZ9xxxxxxxxxxxxxxxxxxxxSboh"></div>
+          <button class="btn">更换</button>
+        </div>
+        <div class="hint ok"><i></i>已设置 · 12 分钟前拉取到 8 个可用模型</div>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="lab"><b>默认模型</b><span>影响 wegoo_image 的默认值</span></div>
+      <div class="ctl">
+        <div class="sel with-tag">
+          <input class="inp" value="gpt-image-2.6" readonly>
+          <span class="tag">$0.0300 / 次</span>
+        </div>
+        <button class="btn">刷新</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 视频 -->
+  <section class="sec">
+    <div class="sec-head">
+      <div>
+        <div class="sec-title"><span class="sec-dot vid"></span>视频生成</div>
+        <div class="sec-sub">按 token 计费，事前按秒单价推算</div>
+      </div>
+      <div class="sw on"></div>
+    </div>
+
+    <div class="field">
+      <div class="lab"><b>API Key</b><span>Video Plus 分组</span></div>
+      <div>
+        <div class="ctl">
+          <div class="key"><input class="inp mono" type="password" value="sk-y18xxxxxxxxxxxxxxxxxxxxTAqT"></div>
+          <button class="btn">更换</button>
+        </div>
+        <div class="hint"><i></i>已设置 · 未拉取过模型列表</div>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="lab"><b>默认模型</b><span>sd2.0-* 与 wan3-* 需要参考图</span></div>
+      <div class="ctl">
+        <div class="sel with-tag">
+          <input class="inp" value="grok-imagine-video" readonly>
+          <span class="tag">$1.0500 / 5s</span>
+        </div>
+        <button class="btn">刷新</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 限额 -->
+  <section class="sec">
+    <div class="sec-head">
+      <div>
+        <div class="sec-title"><span class="sec-dot lim"></span>预算限额</div>
+        <div class="sec-sub">超限直接拒绝，不会发出上游请求</div>
+      </div>
+    </div>
+
+    <div class="row3">
+      <div class="box"><b>单次上限</b><div class="v"><input value="10"><span>USD</span></div></div>
+      <div class="box"><b>每日总额</b><div class="v"><input value="5"><span>USD</span></div></div>
+      <div class="box"><b>每分钟次数</b><div class="v"><input value="6"><span>次</span></div></div>
+    </div>
+
+    <div class="meter">
+      <div class="top"><span>今日已用 <b>$1.2193</b> / $5.0000</span><span>剩余 $3.7807</span></div>
+      <div class="bar"><i style="width:24.4%"></i></div>
+    </div>
+  </section>
+
+  <div class="foot">
+    <div class="dirty"><i></i>有未保存的更改</div>
+    <div class="acts">
+      <button class="btn ghost">重置</button>
+      <button class="btn primary">保存</button>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
