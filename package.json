@@ -1,14 +1,14 @@
 {
   "name": "dsh-wegoo-easy2use",
   "version": "0.2.0",
-  "icon": "./icon.png",
+  "icon": "./icon.svg",
   "description": "wegoo relay for DeepSeek Harness: image/video generation tools with a local cost ledger and budget guards",
   "type": "module",
   "main": "./src/index.js",
   "exports": {
     ".": "./src/index.js",
     "./client": "./src/client.js",
-    "./icon": "./icon.png",
+    "./icon": "./icon.svg",
     "./package.json": "./package.json"
   },
   "files": [
