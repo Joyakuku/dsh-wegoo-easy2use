@@ -1,6 +1,6 @@
 {
   "name": "dsh-wegoo-easy2use",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "icon": "./icon.png",
   "description": "wegoo relay for DeepSeek Harness: image/video generation tools with a local cost ledger and budget guards",
   "type": "module",

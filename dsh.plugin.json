@@ -1,9 +1,12 @@
 {
   "name": "dsh-wegoo-easy2use",
   "description": "wegoo relay for DeepSeek Harness: image/video generation tools, per-call cost ledger and budget guards.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "entry": {
     "name": "dsh-wegoo-easy2use",
-    "inject": ["tools", "attachments"]
+    "inject": [
+      "tools",
+      "attachments"
+    ]
   }
 }
