@@ -744,6 +744,48 @@ export function apply(ctx, config) {
   // 子智能体结算：在 tool/call 记游标、tool/result 结算差额。
   // 子智能体的 token 不进父会话，但一定进 relay 日志，这是唯一能精确归因的方式。
   const pendingSubagents = new Map();
+  // 子智能体结算回填：每 30 秒重新读一次 relay 日志，金额变了就更新同一条账本记录。
+  // 连续 4 次（2 分钟）没有变化就定稿——长时间运行的子智能体也能记准。
+  const subagentSettlers = new Map();
+
+  async function sweepSubagentSettlers() {
+    for (const [entryId, st] of [...subagentSettlers]) {
+      try {
+        const settled = await settleSince(relay, st.key, st.from);
+        const changed = settled.usd !== st.lastUsd || settled.requests !== st.lastReq;
+        if (changed) {
+          st.lastUsd = settled.usd;
+          st.lastReq = settled.requests;
+          st.stable = 0;
+          L.updateEntryById(entryId, {
+            settledUsd: settled.usd,
+            requests: settled.requests,
+            label: `${st.source} · ${settled.requests} 请求`,
+            provisional: true,
+            note: '结算中…',
+          });
+          continue;
+        }
+        st.stable += 1;
+        if (st.stable >= 4) {
+          L.updateEntryById(entryId, {
+            settledUsd: settled.usd,
+            requests: settled.requests,
+            label: `${st.source} · ${settled.requests} 请求`,
+            provisional: false,
+            note: settled.usd === 0 ? '零计费' : undefined,
+          });
+          subagentSettlers.delete(entryId);
+        }
+      } catch {
+        /* 单次读取失败不影响其他条目 */
+      }
+    }
+  }
+
+  const settlerTimer = setInterval(() => { void sweepSubagentSettlers(); }, 30_000);
+  if (typeof settlerTimer.unref === 'function') settlerTimer.unref();
+
   const subagentDispose = ctx.on('session/event', (session, event) => {
     // 先记「当前会话」，再看结算开关：面板的 session 口径不依赖子智能体结算是否开启。
     let sessionId = null;
@@ -778,20 +820,25 @@ export function apply(ctx, config) {
         pendingSubagents.delete(callId);
         void (async () => {
           const fromId = await rec.from;
-          let settled = await settleSince(relay, rec.key, fromId);
-          // relay 记账有几秒延迟：没有行就重试几次，别把一笔真实花费记成 0。
-          for (let i = 0; i < 4 && settled.requests === 0; i += 1) {
-            await sleep(1500);
-            settled = await settleSince(relay, rec.key, fromId);
-          }
-          record({
+          // tool/result 对异步产品只代表「已启动」，真实花费会在之后陆续产生：
+          // 先落一条临时条目，再交给 sweepSubagentSettlers 周期回填。
+          const settled = await settleSince(relay, rec.key, fromId);
+          const entry = record({
             kind: 'subagent',
             label: `${rec.source} · ${settled.requests} 请求`,
             settledUsd: settled.usd,
             requests: settled.requests,
-            note: settled.usd === 0 ? '零计费' : undefined,
-            extra: { source: rec.source },
+            note: '结算中…',
+            extra: { source: rec.source, provisional: true },
             sessionId: rec.sessionId,
+          });
+          subagentSettlers.set(entry.id, {
+            key: rec.key,
+            from: fromId,
+            source: rec.source,
+            lastUsd: settled.usd,
+            lastReq: settled.requests,
+            stable: 0,
           });
         })().catch(() => {
           /* 结算失败不影响主流程 */
@@ -805,6 +852,7 @@ export function apply(ctx, config) {
   const disposers = [modelsTool, imageTool, videoTool, usageTool, panelTool, configTool]
     .map((tool) => ctx.tools.register(tool));
   disposers.push(subagentDispose);
+  disposers.push(() => clearInterval(settlerTimer));
 
   return () => {
     for (const d of disposers) {

@@ -210,5 +210,16 @@ ok('会话追踪：exec 取值顺序与子智能体归并', () => {
   assert.deepEqual(real, { id: 'parent', raw: 'child', field: 'exec.agent.session.id' });
 });
 
+ok('账本可按 id 更新（异步子智能体回填依赖它）', () => {
+  L.appendEntry({ id: 'test-upd', at: Date.now(), kind: 'subagent', label: 'x', settledUsd: 0, requests: 0 });
+  const r = L.updateEntryById('test-upd', { settledUsd: 1.5, requests: 3, label: 'x · 3 请求' });
+  assert.equal(r.settledUsd, 1.5);
+  const back = L.readEntries().find((x) => x.id === 'test-upd');
+  assert.equal(back.settledUsd, 1.5);
+  assert.equal(back.requests, 3);
+  assert.equal(back.label, 'x · 3 请求');
+  assert.equal(L.updateEntryById('no-such-id', { settledUsd: 9 }), null, '未知 id 应返回 null');
+});
+
 console.log(`\n${pass} 组断言全部通过`);
 fs.rmSync(tmp, { recursive: true, force: true });
