@@ -193,7 +193,7 @@ npm run test          # smoke + host + client 三套自检
 已经接进 `~/.dsh/profiles/desktop`：
 
 ```json
-"dependencies": { "dsh-wegoo-easy2use": "file:D:/Code/dsh-wegoo-easy2use" },
+"dependencies": { "dsh-wegoo-easy2use": "file:D:/Code_workspace/dsh_plugin/dsh-wegoo-easy2use" },
 "dsh": { "profile": { "bundles": [ ..., "dsh-wegoo-easy2use" ] } }
 ```
 
