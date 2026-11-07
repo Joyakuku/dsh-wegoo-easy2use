@@ -91,6 +91,16 @@ export const pingLogPath = () => dataFile('client-ping.log');
 export const panelPath = () => dataFile('panel.html');
 export const outputDir = () => dataFile('output');
 
+/** 插件自带技能文件（随包分发）。 */
+export function skillSourceFile() {
+  return path.join(PLUGIN_ROOT, 'skills', 'wegoo-visual', 'SKILL.md');
+}
+
+/** 技能安装位置：DSH 的用户级技能根目录。 */
+export function skillInstallFile() {
+  return path.join(os.homedir(), '.dsh', 'skills', 'wegoo-visual', 'SKILL.md');
+}
+
 /** 写文件前确保父目录存在。 */
 export function ensureParent(file) {
   fs.mkdirSync(path.dirname(file), { recursive: true });

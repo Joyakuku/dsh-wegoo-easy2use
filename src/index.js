@@ -234,36 +234,57 @@ export function apply(ctx, config) {
   const catalog = new Catalog({ relay });
   apply.__catalog = catalog;
 
+  // 随插件分发的技能：插件目录里带一份模板，首次运行时装到用户技能根目录。
+  // 已存在就不覆盖——用户改过的描述优先。
+  const installSkill = () => {
+    try {
+      const src = P.skillSourceFile();
+      const dst = P.skillInstallFile();
+      if (!fs.existsSync(dst)) {
+        fs.mkdirSync(path.dirname(dst), { recursive: true });
+        fs.writeFileSync(dst, fs.readFileSync(src));
+        return { installed: true, path: dst };
+      }
+      return { installed: false, path: dst };
+    } catch (e) {
+      return { installed: false, path: null, error: String(e?.message || e) };
+    }
+  };
+  const skillInstall = installSkill();
+
+  const readSkill = () => {
+    const file = P.skillInstallFile();
+    if (!fs.existsSync(file)) return { path: file, description: '', body: '' };
+    const raw = fs.readFileSync(file, 'utf8');
+    const m = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
+    if (!m) return { path: file, description: '', body: raw };
+    const line = m[1].match(/^description:\s*(.*)$/m);
+    let desc = line ? line[1].trim() : '';
+    if ((desc.startsWith('"') && desc.endsWith('"')) || (desc.startsWith("'") && desc.endsWith("'"))) {
+      desc = desc.slice(1, -1);
+    }
+    return { path: file, description: desc, body: m[2] };
+  };
+
+  const writeSkillDescription = (description) => {
+    const desc = String(description || '').replace(/\s+/g, ' ').trim();
+    if (!desc) throw new Error('触发描述不能为空');
+    const file = P.skillInstallFile();
+    const current = readSkill();
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(
+      file,
+      `---\nname: wegoo-visual\ndescription: "${desc.replace(/"/g, '\\"')}"\n---\n${current.body || '\n'}`,
+      'utf8',
+    );
+    return { path: file, description: desc, body: current.body };
+  };
+
   // 数据目录：第一次解析时顺带做旧目录（~/.dsh/wegoo）→ <插件>/data 的一次性拷贝迁移。
   const dataDir = P.dataDir();
   const migration = P.migrationStatus();
   if (migration?.migrated || migration?.reason === 'error') {
     appendPing({ stage: 'data-dir', dir: dataDir, migration });
-  }
-
-  // 最近一条用户消息原文：触发词只在「用户此刻到底要什么」上判定。
-  let lastUserMessage = '';
-
-  const messageText = (message) => {
-    const content = message?.content;
-    if (typeof content === 'string') return content;
-    if (!Array.isArray(content)) return '';
-    return content
-      .map((block) => (block && block.type === 'text' && typeof block.text === 'string' ? block.text : ''))
-      .filter(Boolean)
-      .join('\n');
-  };
-
-  /** 触发规则：always 放行；match 时要求最近一条用户消息里出现任意触发词。 */
-  function matchTrigger(cap) {
-    const mode = cap?.triggerMode === 'match' ? 'match' : 'always';
-    const words = (Array.isArray(cap?.triggers) ? cap.triggers : [])
-      .map((w) => String(w).trim())
-      .filter(Boolean);
-    if (mode !== 'match' || words.length === 0) return { mode, words, hit: null, allowed: true };
-    const hay = lastUserMessage.toLowerCase();
-    const hit = words.find((w) => hay.includes(w.toLowerCase())) || null;
-    return { mode, words, hit, allowed: Boolean(hit) };
   }
 
   // 「本次会话」：工具执行时优先从 exec 取会话 id，取不到再用 session/event 里记下的最近会话。
@@ -425,6 +446,12 @@ export function apply(ctx, config) {
       appendPing(payload);
       return { ok: true };
     }
+    if (endpoint === 'skill') {
+      const action = payload?.action || 'get';
+      if (action === 'get') return { ...readSkill(), install: skillInstall };
+      if (action === 'set') return { ...writeSkillDescription(payload?.description), install: skillInstall };
+      throw new Error(`unknown skill action: ${action}`);
+    }
     if (endpoint === 'set') {
       const patch = payload?.patch;
       if (!patch || typeof patch !== 'object' || Array.isArray(patch)) {
@@ -514,13 +541,6 @@ export function apply(ctx, config) {
       const config = getConfig();
       const sessionId = sessionOf(exec);
       const cap = requireCapability(config, 'image');
-      const trigger = matchTrigger(cap);
-      if (!trigger.allowed) {
-        throw new Error(
-          `图像生成当前设为「仅命中触发词」，但最近一条用户消息里没有出现：${trigger.words.join(' / ')}。`
-          + ' 如果确实需要出图，请让用户明确说一句，或到插件设置里把触发方式改成「始终允许」。',
-        );
-      }
       const model = await pickModel({ config, kind: 'image' });
 
       if (!Number.isFinite(model.fixedUsd) || model.fixedUsd <= 0) {
@@ -536,8 +556,7 @@ export function apply(ctx, config) {
       await confirmSpend({
         exec,
         title: `图像生成 · ${model.id}`,
-        detail: `${n} 张${args?.size ? ` · ${args.size}` : ''}${args?.image ? ' · 图生图（编辑）' : ''}`
-          + (trigger.hit ? ` · 命中「${trigger.hit}」` : ''),
+        detail: `${n} 张${args?.size ? ` · ${args.size}` : ''}${args?.image ? ' · 图生图（编辑）' : ''}`,
         estimateUsd: quoteUsd[0],
         exact: true,
       });
@@ -621,13 +640,6 @@ export function apply(ctx, config) {
       const config = getConfig();
       const sessionId = sessionOf(exec);
       const cap = requireCapability(config, 'video');
-      const trigger = matchTrigger(cap);
-      if (!trigger.allowed) {
-        throw new Error(
-          `视频生成当前设为「仅命中触发词」，但最近一条用户消息里没有出现：${trigger.words.join(' / ')}。`
-          + ' 如果确实需要出片，请让用户明确说一句，或到插件设置里把触发方式改成「始终允许」。',
-        );
-      }
       const model = await pickModel({ config, kind: 'video' });
 
       if (args?.taskId) {
@@ -651,8 +663,7 @@ export function apply(ctx, config) {
       await confirmSpend({
         exec,
         title: `视频生成 · ${model.id}`,
-        detail: `时长 ${args?.duration ?? '默认'}s${args?.resolution ? ` · ${args.resolution}` : ''}${args?.image ? ' · 带参考图' : ''}`
-          + (trigger.hit ? ` · 命中「${trigger.hit}」` : ''),
+        detail: `时长 ${args?.duration ?? '默认'}s${args?.resolution ? ` · ${args.resolution}` : ''}${args?.image ? ' · 带参考图' : ''}`,
         estimateUsd: quoteUsd[1],
         exact: false,
       });
@@ -833,12 +844,6 @@ export function apply(ctx, config) {
     try { sessionId = tracker.observe(session); } catch { /* ignore */ }
     try {
       if ((config?.tracking?.enabled ?? true) === false) return;
-
-      if (event?.type === 'user/message') {
-        const text = messageText(event.data?.message);
-        if (text) lastUserMessage = text;
-        return;
-      }
 
       if (event?.type === 'tool/call') {
         const data = event.data || {};

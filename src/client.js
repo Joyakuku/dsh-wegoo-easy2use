@@ -142,15 +142,11 @@
             enabled: Boolean(cfg?.image?.enabled),
             defaultModel: cfg?.image?.defaultModel || '',
             maxUsdPerCall: numOr(cfg?.image?.maxUsdPerCall),
-            triggerMode: cfg?.image?.triggerMode === 'match' ? 'match' : 'always',
-            triggers: Array.isArray(cfg?.image?.triggers) ? cfg.image.triggers.slice() : [],
           },
           video: {
             enabled: Boolean(cfg?.video?.enabled),
             defaultModel: cfg?.video?.defaultModel || '',
             maxUsdPerCall: numOr(cfg?.video?.maxUsdPerCall),
-            triggerMode: cfg?.video?.triggerMode === 'match' ? 'match' : 'always',
-            triggers: Array.isArray(cfg?.video?.triggers) ? cfg.video.triggers.slice() : [],
           },
           limits: {
             perCallUsd: numOr(cfg?.limits?.perCallUsd),
@@ -314,16 +310,15 @@
               h('div', { style: { display: 'flex', alignItems: 'center' } },
                 h('button', {
                   type: 'button',
-                  className: `wgf-gear${draftKind.triggerMode === 'match' ? ' hot' : ''}`,
-                  title: '配置在什么任务下才触发',
-                  onClick: () => setEditing({
-                    kind,
-                    mode: draftKind.triggerMode,
-                    text: (draftKind.triggers || []).join('\n'),
-                  }),
-                }, draftKind.triggerMode === 'match'
-                  ? `触发 · ${(draftKind.triggers || []).length} 个词`
-                  : '触发规则'),
+                  className: 'wgf-gear',
+                  title: '编辑这个技能什么时候触发',
+                  onClick: () => {
+                    setEditing({ kind, text: '', loading: true });
+                    rpc('skill', { action: 'get' })
+                      .then((r) => setEditing({ kind, text: (r && r.description) || '', loading: false }))
+                      .catch(() => setEditing({ kind, text: '', loading: false }));
+                  },
+                }, '触发描述'),
                 h('button', {
                   type: 'button',
                   className: `wgf-sw${draftKind.enabled ? ' on' : ''}`,
@@ -412,48 +407,38 @@
             },
               h('div', { className: 'wgf-modal' },
                 h('div', { className: 'wgf-modal-h' },
-                  h('b', null, `${editing.kind === 'image' ? '图像生成' : '视频生成'} · 触发规则`),
-                  h('p', null, '决定什么样的任务下才允许生成；不配置则始终允许。')),
+                  h('b', null, 'wegoo-visual · 触发描述'),
+                  h('p', null, '这是一段技能描述，模型按它的语义判断「什么任务该生成图/视频」。'
+                    + '不需要出现固定的关键词——写清楚适用与不适用的场景即可。')),
                 h('div', { className: 'wgf-modal-b' },
-                  h('div', {
-                    className: `wgf-opt${editing.mode === 'always' ? ' on' : ''}`,
-                    onClick: () => setEditing({ ...editing, mode: 'always' }),
-                  },
-                    h('input', { type: 'radio', readOnly: true, checked: editing.mode === 'always' }),
-                    h('div', null,
-                      h('div', { className: 't' }, '始终允许'),
-                      h('div', { className: 'd' }, '任何任务都可以调用，只受预算限额和确认弹窗约束。'))),
-                  h('div', {
-                    className: `wgf-opt${editing.mode === 'match' ? ' on' : ''}`,
-                    onClick: () => setEditing({ ...editing, mode: 'match' }),
-                  },
-                    h('input', { type: 'radio', readOnly: true, checked: editing.mode === 'match' }),
-                    h('div', null,
-                      h('div', { className: 't' }, '仅命中触发词时'),
-                      h('div', { className: 'd' }, '最近一条用户消息里出现任意一个词才允许生成，否则直接拒绝。'))),
-                  editing.mode === 'match'
-                    ? h('div', null,
-                        h('div', { style: { fontSize: 11.5, color: '#98989d', margin: '12px 0 6px' } },
-                          '触发词（一行一个，也可用逗号分隔）'),
-                        h('textarea', {
-                          className: 'wgf-ta',
-                          value: editing.text,
-                          placeholder: '产品图\nlogo\n做 demo\n配图',
-                          onChange: (e) => setEditing({ ...editing, text: e.target.value }),
-                        }))
-                    : null),
+                  editing.loading
+                    ? h('div', { style: { padding: '18px 0', color: '#98989d' } }, '读取技能描述…')
+                    : h('textarea', {
+                        className: 'wgf-ta',
+                        style: { minHeight: '150px' },
+                        value: editing.text,
+                        placeholder: '用 wegoo 生成图像或视频。适用于：产品设计图、Logo、demo 配图…',
+                        onChange: (e) => setEditing({ ...editing, text: e.target.value }),
+                      }),
+                  h('div', { style: { fontSize: 11, color: '#98989d', marginTop: 8, lineHeight: 1.55 } },
+                    '保存后会写入 ~/.dsh/skills/wegoo-visual/SKILL.md 的 description 字段，'
+                    + '技能目录是实时监听的，无需重启即可生效。')),
                 h('div', { className: 'wgf-modal-f' },
                   h('button', { type: 'button', className: 'wgf-btn ghost', onClick: () => setEditing(null) }, '取消'),
                   h('button', {
                     type: 'button',
                     className: 'wgf-btn primary',
-                    onClick: () => {
-                      const words = parseWords(editing.text);
-                      const nextMode = editing.mode === 'match' && words.length === 0 ? 'always' : editing.mode;
-                      patch((n) => { n[editing.kind].triggerMode = nextMode; n[editing.kind].triggers = words; });
-                      setEditing(null);
+                    disabled: editing.loading,
+                    onClick: async () => {
+                      try {
+                        await rpc('skill', { action: 'set', description: editing.text });
+                        setEditing(null);
+                        setNote('触发描述已保存');
+                      } catch (e) {
+                        setNote(`保存失败：${(e && e.message) || e}`);
+                      }
                     },
-                  }, '确定'))))
+                  }, '保存描述'))))
           : null;
 
         return h('div', { id: 'wegoo-form' },

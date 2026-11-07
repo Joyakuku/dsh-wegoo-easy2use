@@ -13,7 +13,8 @@
     "src",
     "cordis.patch.yml",
     "dsh.plugin.json",
-    "README.md"
+    "README.md",
+    "skills"
   ],
   "dsh": {
     "bundle": {
@@ -26,6 +27,14 @@
       "platform": "web"
     }
   },
-  "keywords": ["dsh", "dsh-plugin", "deepseek-harness", "wegoo", "image", "video", "cost"],
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "wegoo",
+    "image",
+    "video",
+    "cost"
+  ],
   "license": "MIT"
 }
