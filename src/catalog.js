@@ -10,10 +10,9 @@
  *  - quota_type === 0：按 token 计，model_ratio 是倍率；1 USD = 500000 quota。
  */
 
-const CACHE_TTL_MS = 60 * 60 * 1000;
+import { QUOTA_PER_USD } from './rates.js';
 
-/** quota → 美元。New-API 的记账约定。 */
-export const QUOTA_PER_USD = 500_000;
+const CACHE_TTL_MS = 60 * 60 * 1000;
 
 export function quotaToUsd(quota) {
   return Number(quota || 0) / QUOTA_PER_USD;

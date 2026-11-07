@@ -79,6 +79,8 @@ for (const name of INCLUDE) {
     continue;
   }
   if (fs.statSync(src).isDirectory()) {
+    // 目录按镜像处理：先清空，避免副本里留下源码中已删除的文件
+    if (!dryRun) fs.rmSync(dst, { recursive: true, force: true });
     copyDir(src, dst);
     count += countFiles(src);
   } else {
@@ -88,4 +90,5 @@ for (const name of INCLUDE) {
 }
 
 console.log(`${dryRun ? '[dry-run] ' : ''}已同步 ${count} 个文件 → ${target}`);
-console.log('运行时数据（data/）保持不动。改完重启 DSH 生效；只改客户端代码可用页面重载。');
+console.log('目录按镜像同步（副本里多出的文件会被删除）；data/ 保持不动。');
+console.log('改完重启 DSH 生效；只改客户端代码可用页面重载。');

@@ -150,6 +150,7 @@ src/specs.js    工具 schema 与描述
 src/config.js   schemastery 配置
 src/paths.js    数据目录与技能路径解析、旧目录迁移
 skills/         wegoo-visual 技能（随插件分发）
+scripts/sync.mjs 把源码同步进 profile 的安装副本
 ```
 
 性能上做了三件事：账本读取按 `mtime+size` 缓存、角标与面板在数据未变化时不碰 DOM、
@@ -164,9 +165,15 @@ skills/         wegoo-visual 技能（随插件分发）
 ## 自检
 
 ```bash
-node test/smoke.mjs    # 预算 / 账本 / 计费推算（14 组断言）
+node test/smoke.mjs    # 预算 / 账本 / 计费推算（15 组断言）
 node test/host.mjs     # 模拟 ctx 跑 apply()，检查工具契约
 node test/client.mjs   # 浏览器侧：样式注入 + 面板只在本插件详情页渲染
+```
+
+自检要解析 DSH 自己的包（`@deepseek-ai/dsh-tools` 等）。`node_modules/` 不入库，克隆后建一次软链即可：
+
+```bash
+ln -sfn ~/.dsh/profiles/node_modules/@deepseek-ai node_modules/@deepseek-ai
 ```
 
 ## 安装与开发
@@ -181,14 +188,12 @@ node test/client.mjs   # 浏览器侧：样式注入 + 面板只在本插件详�
 本地开发时源码在仓库里、跑起来的是安装副本，改完需要同步一次：
 
 ```bash
-npm run sync          # 复制 src/ skills/ docs/ icon.* README 等到 profile 副本
+npm run sync          # 把 src/ skills/ docs/ icon.* README 镜像到 profile 副本
 npm run sync -- --dry-run
 npm run test          # smoke + host + client 三套自检
 ```
 
-`data/`（账本、配置、生成产物）不会被同步覆盖。
-
-## 安装
+目录按镜像同步——副本里多出来的文件会被删掉；`data/`（账本、配置、生成产物）完全不动。
 
 已经接进 `~/.dsh/profiles/desktop`：
 
@@ -199,4 +204,8 @@ npm run test          # smoke + host + client 三套自检
 
 改完**重启 DSH** 生效（技能文件除外，它是热加载的）。
 
-<!-- 预览：docs/settings-form.png（配置表单）、docs/settings-skill.png（触发描述弹窗）、docs/ui-pill.png（结算角标） -->
+## 界面预览
+
+| 结算角标 | 配置表单 | 触发描述 |
+|---|---|---|
+| ![](docs/ui-pill.png) | ![](docs/settings-form.png) | ![](docs/settings-skill.png) |

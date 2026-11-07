@@ -124,8 +124,6 @@
         .wgf-loading{padding:22px;color:#98989d;font-size:12px}
       `;
 
-      const QUOTA = 500000;
-
       const numOr = (v, fallback = 0) => (Number.isFinite(Number(v)) ? Number(v) : fallback);
       const clone = (v) => JSON.parse(JSON.stringify(v));
 
