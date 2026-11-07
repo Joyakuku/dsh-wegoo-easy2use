@@ -1,0 +1,14 @@
+# 运行时数据目录：含 API key、账本、报价校准，绝不入库
+data/
+data.migrating-*
+
+# 生成产物与缓存
+*.log
+output/
+
+# 依赖
+node_modules/
+
+# 编辑器与系统
+.DS_Store
+Thumbs.db
