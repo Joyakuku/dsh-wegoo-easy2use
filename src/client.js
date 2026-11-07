@@ -173,21 +173,39 @@
           }
         }, []);
 
+        // 每 5 秒和宿主对一次账：外部改了配置（工具、直接编辑文件）或花了钱，
+        // 表单和预算条都要跟上。用户有未保存修改时不覆盖输入框，只更新已保存快照。
+        const dirtyRef = React.useRef(false);
         React.useEffect(() => {
           let alive = true;
-          rpc('get', {})
-            .then((r) => {
-              if (!alive || !r) return;
-              setSaved(r);
-              setDraft(draftOf(r));
-              if (r.imageKeySet) void loadModels('image', '');
-              if (r.videoKeySet) void loadModels('video', '');
-            })
-            .catch((e) => { if (alive) setErr(String((e && e.message) || e)); });
-          rpc('ledger', {})
-            .then((l) => { if (alive && l) setLedger(l); })
-            .catch(() => {});
-          return () => { alive = false; };
+          let first = true;
+          const pull = async () => {
+            try {
+              const [cfg, led] = await Promise.all([rpc('get', {}), rpc('ledger', {})]);
+              if (!alive) return;
+              if (cfg) {
+                // 值没变就不 setState，避免每 5 秒重建一次整棵表单导致输入框失焦。
+                setSaved((prev) => (JSON.stringify(prev) === JSON.stringify(cfg) ? prev : cfg));
+                if (!dirtyRef.current) {
+                  setDraft((d) => {
+                    const next = draftOf(cfg);
+                    return JSON.stringify(d) === JSON.stringify(next) ? d : next;
+                  });
+                }
+                if (first) {
+                  first = false;
+                  if (cfg.imageKeySet) void loadModels('image', '');
+                  if (cfg.videoKeySet) void loadModels('video', '');
+                }
+              }
+              if (led) setLedger(led);
+            } catch (e) {
+              if (alive && first) setErr(String((e && e.message) || e));
+            }
+          };
+          void pull();
+          const timer = setInterval(() => { void pull(); }, 5000);
+          return () => { alive = false; clearInterval(timer); };
         }, [loadModels]);
 
         if (err) return h('div', { className: 'wgf-warn' }, `读取配置失败：${err}`);
@@ -204,6 +222,7 @@
         };
 
         const dirty = JSON.stringify(draft) !== JSON.stringify(draftOf(saved)) || Boolean(keys.image || keys.video);
+        dirtyRef.current = dirty || Boolean(keys.image || keys.video);
         const limitsBad = !(draft.limits.perCallUsd > 0) || !(draft.limits.totalUsd > 0) || !(draft.limits.perMinute > 0);
 
         const save = async () => {

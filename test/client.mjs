@@ -56,6 +56,7 @@ const React = {
   useState: (v) => [v, () => {}],
   useEffect: () => {},
   useCallback: (fn) => fn,
+  useRef: (v) => ({ current: v }),
 };
 
 globalThis.window = windowStub;
