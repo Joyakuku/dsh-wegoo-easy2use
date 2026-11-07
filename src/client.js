@@ -19,6 +19,15 @@
       const React = require2('react');
       const h = React.createElement;
 
+      const PACKAGE_NAME = 'dsh-wegoo-easy2use';
+
+      /** `plugins.detail.actions` 是列表插槽，每个插件详情页都会渲染；靠 subject.pkg.name 认领自己的页面。 */
+      function pluginPackageName(subject) {
+        const pkg = subject && typeof subject === 'object' ? subject.pkg : undefined;
+        const name = pkg && typeof pkg === 'object' ? pkg.name : undefined;
+        return typeof name === 'string' ? name : undefined;
+      }
+
       const s = {
         card: { display: 'flex', flexDirection: 'column', gap: 8, padding: '10px 0' },
         row: { display: 'flex', alignItems: 'center', gap: 8 },
@@ -680,6 +689,12 @@
         };
         void tick();
       }
+      /** 门卫：不是本插件的详情页就不渲染（本身不含 hooks，安全）。 */
+      function WegooConfigGate(props) {
+        if (pluginPackageName(props && props.subject) !== PACKAGE_NAME) return null;
+        return h(WegooConfigPanel, props);
+      }
+
       function apply(ctx) {
         WegooConfigPanel.__rpc = rpc;
         rpc('ping', { stage: 'apply', ua: navigator.userAgent.slice(0, 40) }).catch(() => {});
@@ -695,7 +710,7 @@
           id: 'dsh-wegoo-easy2use-config',
           order: 40,
           inject: () => ({}),
-        }, WegooConfigPanel));
+        }, WegooConfigGate));
       }
 
       return { apply, inject: ['slots'] };
