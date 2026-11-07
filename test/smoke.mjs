@@ -201,5 +201,23 @@ ok('账本可按 id 更新（异步子智能体回填依赖它）', () => {
   assert.equal(L.updateEntryById('no-such-id', { settledUsd: 9 }), null, '未知 id 应返回 null');
 });
 
+ok('子智能体花费不占预算闸门', () => {
+  const now = Date.now();
+  const entries = [
+    { id: 'i1', at: now, kind: 'image', settledUsd: 2 },
+    { id: 's1', at: now, kind: 'subagent', settledUsd: 50 },
+  ];
+  const limits = { perCallUsd: 10, totalUsd: 5, totalScope: 'all', perMinute: 6 };
+  const verdict = L.checkBudget({ limits, entries, quoteUsd: [0.03, 0.03], baselineAt: 0 });
+  assert.ok(verdict.ok, '子智能体花 50 也不该挡住 3 分钱的出图');
+  assert.equal(verdict.spent, 2, '闸门口径只算 image/video');
+  // 真正的生成花费仍然会拦
+  const blocked = L.checkBudget({
+    limits, entries: [...entries, { id: 'i2', at: now, kind: 'image', settledUsd: 4 }], quoteUsd: [1, 1], baselineAt: 0,
+  });
+  assert.equal(blocked.ok, false);
+  assert.equal(blocked.reason, 'over_total');
+});
+
 console.log(`\n${pass} 组断言全部通过`);
 fs.rmSync(tmp, { recursive: true, force: true });

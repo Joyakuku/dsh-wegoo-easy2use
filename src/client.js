@@ -384,6 +384,8 @@
 
         const spentUsd = ledger ? Number(ledger.spent) || 0 : 0;
         const limitUsd = ledger ? Number(ledger.limit) || 0 : 0;
+        const spentAll = ledger && Number.isFinite(Number(ledger.spentAll)) ? Number(ledger.spentAll) : spentUsd;
+        const agentUsd = Math.max(0, spentAll - spentUsd);
         const over = limitUsd > 0 && spentUsd >= limitUsd;
         const ratio = limitUsd > 0 ? Math.min(1, spentUsd / limitUsd) : 0;
 
@@ -479,7 +481,8 @@
               ledger
                 ? h('div', { className: 'wgf-meter' },
                     h('div', { className: 'top' },
-                      h('span', null, '今日已用 ', h('b', null, `$${spentUsd.toFixed(4)}`), ` / $${limitUsd.toFixed(4)}`),
+                      h('span', null, '生成已用 ', h('b', null, `$${spentUsd.toFixed(4)}`), ` / $${limitUsd.toFixed(4)}`,
+                        agentUsd > 0.00005 ? `（另有子智能体 $${agentUsd.toFixed(4)}）` : ''),
                       h('span', null, `剩余 $${Math.max(0, limitUsd - spentUsd).toFixed(4)}`)),
                     h('div', { className: 'wgf-bar' },
                       h('i', { className: over ? 'bad' : '', style: { width: `${(ratio * 100).toFixed(1)}%` } })))

@@ -419,9 +419,12 @@ export function apply(ctx, config) {
       const scoped = requested === 'session'
         ? (sessionId ? all.filter((e) => e.sessionId === sessionId) : [])
         : L.entriesInScope(all, requested, { baselineAt: baseline.baselineAt });
-      const spent = scoped.reduce((s, e) => s + Number(e.settledUsd || 0), 0);
+      const spentAll = scoped.reduce((sum, e) => sum + Number(e.settledUsd || 0), 0);
+      // 预算口径只含图像/视频：子智能体异步跑，闸门拦不住，也不该占生成额度。
+      const spent = L.spentUsd(scoped, 'all', 0, undefined, L.BUDGET_KINDS);
       return {
         spent,
+        spentAll,
         limit: limits.totalUsd,
         perCallUsd: limits.perCallUsd,
         perMinute: limits.perMinute,

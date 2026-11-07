@@ -130,26 +130,30 @@ function localMidnight(now = Date.now()) {
  *            拿不到会话 id 时退回旧口径（限额基线之后），让闸门保持 fail-closed
  *   all      全部
  */
-export function entriesInScope(entries, scope, { baselineAt = 0, sessionId } = {}) {
+/** 受预算闸门约束的花费类型。子智能体拦不住，也不占用生成额度。 */
+export const BUDGET_KINDS = ['image', 'video'];
+
+export function entriesInScope(entries, scope, { baselineAt = 0, sessionId, kinds } = {}) {
+  const byKind = kinds ? entries.filter((e) => kinds.includes(e.kind || 'image')) : entries;
   if (scope === 'session' && typeof sessionId === 'string' && sessionId) {
-    return entries.filter((e) => e.sessionId === sessionId);
+    return byKind.filter((e) => e.sessionId === sessionId);
   }
   const floor = scope === 'day' ? localMidnight() : scope === 'session' ? (Number(baselineAt) || 0) : 0;
-  return entries.filter((e) => (e.at || 0) >= floor);
+  return byKind.filter((e) => (e.at || 0) >= floor);
 }
 
 /** 按作用域统计已花。 */
-export function spentUsd(entries, scope, baselineAt, sessionId) {
+export function spentUsd(entries, scope, baselineAt, sessionId, kinds) {
   let sum = 0;
-  for (const e of entriesInScope(entries, scope, { baselineAt, sessionId })) {
+  for (const e of entriesInScope(entries, scope, { baselineAt, sessionId, kinds })) {
     sum += Number(e.settledUsd || 0);
   }
   return sum;
 }
 
-export function countLastMinute(entries, now = Date.now()) {
+export function countLastMinute(entries, now = Date.now(), kinds) {
   const floor = now - 60_000;
-  return entries.filter((e) => (e.at || 0) >= floor).length;
+  return entries.filter((e) => (e.at || 0) >= floor && (!kinds || kinds.includes(e.kind || 'image'))).length;
 }
 
 /**
@@ -159,13 +163,13 @@ export function countLastMinute(entries, now = Date.now()) {
  */
 export function checkBudget({ limits, entries, quoteUsd, baselineAt, capabilityCapUsd, sessionId }) {
   const [low, high] = quoteUsd;
-  const spent = spentUsd(entries, limits.totalScope, baselineAt, sessionId);
+  const spent = spentUsd(entries, limits.totalScope, baselineAt, sessionId, BUDGET_KINDS);
   const remaining = Math.max(0, limits.totalUsd - spent);
   const perCallCap = Math.min(limits.perCallUsd, Number(capabilityCapUsd) || Infinity);
 
   const base = { spent, remaining, limit: limits.totalUsd, scope: limits.totalScope, quote: [low, high] };
 
-  if (countLastMinute(entries) >= limits.perMinute) {
+  if (countLastMinute(entries, Date.now(), BUDGET_KINDS) >= limits.perMinute) {
     return { ok: false, reason: 'rate_limited', message: `每分钟最多 ${limits.perMinute} 次`, ...base };
   }
   if (high > perCallCap) {
