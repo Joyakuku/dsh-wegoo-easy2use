@@ -6,7 +6,6 @@
  *   wegoo_image   固定价出图；报价先过预算闸门，超限直接拒绝，零请求
  *   wegoo_video   按 token 计费，出任务 → 轮询 → 落盘 → 结算
  *   wegoo_usage   账本与逐条请求日志（真实金额只有 /api/log/token 有）
- *   wegoo_panel   生成右上角结算面板（滚动窗口）
  *
  * 没有审批通道：权限为 never 时全放行，闸门只有限额，一律 fail-closed。
  */
@@ -22,7 +21,6 @@ import * as P from './paths.js';
 import * as S from './specs.js';
 import { createSessionTracker, describeExec } from './session.js';
 import { Config, resolveOutputDir, readEffectiveConfig, readOverride, writeOverride, configPath, maskSecrets, mergeConfig } from './config.js';
-import { renderPanel } from './panel.js';
 import { estimateImageUsd, estimateTrafficUsd, estimateVideoUsd, learnFromRows, RECONCILE_TOLERANCE } from './rates.js';
 
 let defineTool;
@@ -732,40 +730,6 @@ export function apply(ctx, config) {
     },
   });
 
-  const panelTool = defineTool({
-    ...S.panelSpec(),
-    timeoutMs: 120_000,
-    async execute(args, exec) {
-      const config = getConfig();
-      const sessionId = sessionOf(exec);
-      const limit = Math.max(1, Math.min(2000, Number(args?.limit) || 200));
-      const limits = L.resolveLimits(config);
-      const baseline = L.syncBaseline(limits);
-      const all = L.readEntries();
-      const entries = all.slice(-limit);
-      const spent = L.spentUsd(all, limits.totalScope, baseline.baselineAt, sessionId);
-
-      const html = renderPanel({
-        entries,
-        limits,
-        spent,
-        baselineAt: baseline.baselineAt,
-        reset: baseline.reset,
-        generatedAt: Date.now(),
-      });
-      const file = P.ensureParent(P.panelPath());
-      fs.writeFileSync(file, html, 'utf8');
-
-      return {
-        text: [
-          `面板已生成：${file}`,
-          `共 ${entries.length} 条记录 · ${({ day: '今日', session: '本次', all: '累计' })[limits.totalScope]} $${spent.toFixed(4)} / $${limits.totalUsd.toFixed(4)}`,
-          '在文件预览里打开即可；每次调用 wegoo_panel 会重新生成。',
-        ].join('\n'),
-      };
-    },
-  });
-
   const configTool = defineTool({
     ...S.configSpec(),
     async execute(args) {
@@ -901,7 +865,7 @@ export function apply(ctx, config) {
     }
   }, { global: true });
 
-  const disposers = [modelsTool, imageTool, videoTool, usageTool, panelTool, configTool]
+  const disposers = [modelsTool, imageTool, videoTool, usageTool, configTool]
     .map((tool) => ctx.tools.register(tool));
   disposers.push(subagentDispose);
   disposers.push(() => clearInterval(settlerTimer));

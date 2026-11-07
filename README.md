@@ -1,46 +1,169 @@
 # dsh-wegoo-easy2use
 
-wegoo（New-API 内核）的 DeepSeek Harness 插件：**图像/视频生成 + 逐次费用结算 + 预算闸门**。
+wegoo（New-API 内核）的 DeepSeek Harness 插件：**图像 / 视频生成 + 逐次费用结算 + 预算闸门**。
 
-## 配置
+生成的图与视频落在 `<插件目录>/data/output/<日期>/`，花费实时汇总到右上角悬浮结算窗。
 
-**插件详情页**里有一块 `wegoo` 配置卡片（图开关、Key、限额），保存后**下一次工具调用生效**，不用重启。
+## 快速开始
 
-卡片走宿主自己的 settings 服务（`namespace = wegoo`），写入 `$DSH_HOME/settings.yaml`。
+1. 装插件、重启 DSH（安装方式见文末）
+2. 打开插件详情页 → 填两个 API Key → 点「刷新」拉模型列表 → 选默认模型 → 保存
+3. 对话里让它出图：**每次生成前都会弹确认卡片，点「确认生成」才真的发请求**
 
-命令行/文件两条备用路径：
+## 三道闸门
 
-1. 对话里调 `wegoo_config`（写 `<插件目录>/data/config.json`，优先级高于 settings 之外的最后兜底）
-2. 直接编辑 `D:\Code\dsh-wegoo-easy2use\data\config.json`
+花钱的动作按这个顺序过三关，任何一关不过都不会产生上游请求：
 
-> 优先级：`settings`（详情页面板）> `config.json`（手动覆盖）> 组合配置。
+| 顺序 | 关卡 | 说明 |
+|---|---|---|
+| 1 | 技能触发（软） | 模型按 `wegoo-visual` 技能描述做语义判断，决定这次任务该不该生成 |
+| 2 | 确认卡片（硬） | 宿主 `userQuestions` 弹选项卡，报价写明金额；点「取消」= 零请求零费用 |
+| 3 | 预算闸门（硬） | 单次 / 总额 / 每分钟三条限额，超限直接拒绝 |
 
-- 三类花费（子智能体 / 图像 / 视频）共用一份流水，每条带 `sessionId`；`session` 口径只统计当前对话
-- 报价先过闸门：超限直接拒绝，**不发任何上游请求**
-- 没有审批通道：权限为 `never` 时全放行，靠限额兜底（fail-closed）
+技能是**软约束**（模型自行判断），真正拦住花钱的是第 2、3 关。
 
 ## 触发方式（技能）
 
-插件自带一个技能 `wegoo-visual`，随插件分发：
+插件自带技能 `wegoo-visual`，随插件分发：
 
 - 源文件：`<插件目录>/skills/wegoo-visual/SKILL.md`
-- 首次运行时装到 `~/.dsh/skills/wegoo-visual/SKILL.md`（已存在则不覆盖，以你的修改为准）
-- DSH 的技能目录是实时监听的，改动后无需重启
+- 首次运行装到 `~/.dsh/skills/wegoo-visual/SKILL.md`；已存在则不覆盖，以你的修改为准
+- 技能根目录被实时监听，改完**不用重启**
 
-它和关键词匹配的区别：**触发由模型按技能描述做语义判断**，不需要你说出固定字眼。
-描述里写清楚「适用于什么任务」和「不适用于什么任务」，模型据此决定要不要用。
+触发由**模型按描述做语义判断**，不需要你说出固定字眼。描述里同时写「适用于什么任务」和
+「不适用于什么任务」，后者能让模型在画流程图、做 UI 截图时主动不用生成。
 
-设置面板里每组开关左边的「触发描述」按钮可以直接改这段描述，保存写入 SKILL.md 的
-`description` 字段。注意：技能是软约束（模型自行判断），真正花钱前仍会弹确认卡片。
+设置面板里每组开关左边的「触发描述」按钮直接编辑这段描述，保存写入 SKILL.md 的
+`description` 字段。
+
+## 配置
+
+优先级：`settings`（宿主设置服务）> `data/config.json`（工具或手改）> 组合配置。
+
+两条写入路径：
+
+1. 插件详情页的表单 —— 走 `/dsh-wegoo` 路由，写 `data/config.json`，**下一次工具调用生效**
+2. 对话里调 `wegoo_config`
+
+| 字段 | 默认 | 说明 |
+|---|---|---|
+| `baseUrl` | `https://ai.wegoo.site` | 中继地址 |
+| `image.enabled` | `false` | 允许调用图像 API |
+| `image.apiKey` | 空 | 图像分组 Key（Image Lite / Image Plus 是独立分组） |
+| `image.defaultModel` | 空 | 留空取该 key 扫到的第一个固定价模型 |
+| `image.maxUsdPerCall` | `0.5` | 图像单次绝对上限 |
+| `video.enabled` | `false` | 允许调用视频 API |
+| `video.apiKey` | 空 | 视频分组 Key（Video Plus） |
+| `video.defaultModel` | 空 | 留空取该 key 扫到的第一个模型 |
+| `video.maxUsdPerCall` | `1.5` | 视频单次绝对上限 |
+| `limits.perCallUsd` | `0.1` | 单次上限，与上面两个取较小者 |
+| `limits.totalUsd` | `1.0` | 总额上限 |
+| `limits.totalScope` | `day` | `day` / `session` / `all` |
+| `limits.perMinute` | `6` | 每分钟最多调用次数 |
+| `tracking.enabled` | `true` | 是否把子智能体花费也记进面板 |
+| `outputDir` | 空 | 留空用 `<插件目录>/data/output` |
+
+统计口径：`day` 以**本地零点**为界，改限额不会把当天已花的钱清零；`session` 按 `sessionId`
+只算当前对话（历史条目没有 `sessionId`，不计入任何会话）。
+
+## 工具
+
+| 工具 | 作用 | 花钱 |
+|---|---|---|
+| `wegoo_models` | 扫两个 key，列出真正能调的模型与单价 | 否 |
+| `wegoo_image` | 出图；传 `image` 参数则走图生图 / 图像编辑 | 是 |
+| `wegoo_video` | 建任务 → 轮询 → 下载 → 结算 | 是 |
+| `wegoo_usage` | 逐条请求日志 + 本地账本 | 否 |
+| `wegoo_config` | 读写配置（key 打码） | 否 |
+
+## 费用怎么算
+
+唯一可信来源是 `/api/log/token`，每行带 `quota`：`1 USD = 500,000 quota`。
+
+账单行的 `content` 直接写出计费参数，可以反推单价：
+
+| 类型 | 账单原文 | 规律 |
+|---|---|---|
+| 视频 | `Action text_to_video, Billing parameters: seconds: 5, resolution: 720p` | 每秒单价 × 秒数 × 分辨率系数 |
+| 图像 | `Size 1024x1024, Quality standard, Image count 1` | 档位固定价 × 分组倍率（±1%） |
+| 下载 | `Traffic fee for this task download` | 字节数 × 费率 |
+
+**事前估算 + 事后校准**：
+
+1. 调用前按单价表算出金额
+2. 成功返回就先用估算值记账 —— 面板立刻是对的
+3. 后台查真实流水，偏差 ≤ 5% 保留估算值，> 5% 才覆盖并记下偏差
+
+单价表会**自动学习**：每笔真实账单都会回写 `data/rates.json`，模型再多也会自己收敛。
+
+> `/v1/dashboard/billing/usage` 不能用：它忽略日期参数，永远返回同一个账户总额。
+
+## 视频必须先校准
+
+视频按 token 计费，一次 `5s@720p` 到底多少 token 无法预知。**没有校准数据时工具直接拒绝报价**，
+不会瞎猜。跑通一次后回填 `data/calibration.json`：
+
+```json
+{ "wan3-15|5|720p": { "rangeUsd": [0.28, 0.42], "samples": 1 } }
+```
+
+键格式 `模型|时长|分辨率`（缺省用空串）。已实测：`grok-imagine-video` 5s/720p ≈ **$1.05**。
+
+`sd2.0-*` 与 `wan3-*` 是**图生视频**，必须传 `image` 参考图。
+
+## 结算面板
+
+右上角悬浮窗，每 5 秒刷新一次：
+
+- 折叠态：圆点 + 累计金额，超限变红
+- 展开态：主金额、预算条、剩余额度、三档切换（今日 / 本次会话 / 累计）、最近 12 条流水
+- 每条显示 `报价 → 结算`，类型用彩色胶囊区分 IMAGE / VIDEO / AGENT
 
 ## 数据目录
 
-全部本地数据都在插件目录下的 `data/`（路径统一由 `src/paths.js` 解析）：
-`config.json` `ledger.jsonl` `limits.json` `rates.json` `calibration.json` `client-ping.log` `panel.html` `output/`。
+全部本地数据在插件目录下的 `data/`，路径统一由 `src/paths.js` 解析：
 
-- 第一次运行时，如果旧目录 `~/.dsh/wegoo/` 存在而 `data/` 不存在，会**整体拷贝**过来一次（写入 `.migrated-from-legacy.json` 标记），**旧目录保留不删**。
-- 设置环境变量 `WEGOO_DATA_DIR=<目录>` 可改用别的目录；此时**不做迁移**（测试靠它隔离，避免把真实 key 拷进临时目录）。
-- `data/` 里有 API Key：已写进 `.gitignore`，也不在 `package.json` 的 `files` 里，不会被打包。
+`config.json` `ledger.jsonl` `limits.json` `rates.json` `calibration.json` `client-ping.log` `output/`
+
+- 首次运行时若旧目录 `~/.dsh/wegoo/` 存在而 `data/` 不存在，**整体拷贝一次**并写
+  `.migrated-from-legacy.json` 标记，**旧目录保留不删**
+- 设 `WEGOO_DATA_DIR=<目录>` 可改用别的目录，此时**不迁移**（测试靠它隔离）
+- `data/` 含 API Key：已进 `.gitignore`，也不在 `package.json` 的 `files` 里
+
+## 架构
+
+```
+src/index.js    宿主插件入口：5 个工具、/dsh-wegoo 路由、会话事件、结算回填
+src/client.js   浏览器侧：详情页配置面板 + 右上角结算角标（纯 DOM，不用构建）
+src/relay.js    HTTP 客户端（生成、任务轮询、日志、二进制下载）
+src/catalog.js  模型目录：/v1/models × /api/pricing
+src/rates.js    事前计费推算 + 单价学习
+src/ledger.js   账本、限额判定、读取缓存
+src/session.js  会话 id 追踪（本次会话口径）
+src/specs.js    工具 schema 与描述
+src/config.js   schemastery 配置
+src/paths.js    数据目录与技能路径解析、旧目录迁移
+skills/         wegoo-visual 技能（随插件分发）
+```
+
+性能上做了三件事：账本读取按 `mtime+size` 缓存、角标与面板在数据未变化时不碰 DOM、
+`settleSince` 只在有未决子智能体时才请求 relay。
+
+## 已知限制
+
+- **子智能体是异步的**：`tool/result` 只代表「已启动」。插件先记一条临时条目，再每 30 秒
+  重新对账回填，连续 2 分钟无变化才定稿；进程退出会丢掉未完成的回填。
+- **同一 key 并发跑多个子智能体时差额会串账**：建议每个来源用独立 key。
+- **拿不到账户余额**：`sk-` 权限下 `/api/user/self` 返回 401，只能显示累计已花。
+- **技能是软约束**：模型可能该用不用，或不该用却用了；硬拦截只有确认卡片和预算闸门。
+
+## 自检
+
+```bash
+node test/smoke.mjs    # 预算 / 账本 / 计费推算（14 组断言）
+node test/host.mjs     # 模拟 ctx 跑 apply()，检查工具契约
+node test/client.mjs   # 浏览器侧：样式注入 + 面板只在本插件详情页渲染
+```
 
 ## 安装
 
@@ -51,93 +174,6 @@ wegoo（New-API 内核）的 DeepSeek Harness 插件：**图像/视频生成 + �
 "dsh": { "profile": { "bundles": [ ..., "dsh-wegoo-easy2use" ] } }
 ```
 
-改完**重启 DSH** 生效。
+改完**重启 DSH** 生效（技能文件除外，它是热加载的）。
 
-## 设置页字段
-
-| 字段 | 默认 | 说明 |
-|---|---|---|
-| `baseUrl` | `https://ai.wegoo.site` | 中继地址 |
-| `image.enabled` | `false` | **是否允许调用图像 API** |
-| `image.apiKey` | 空 | 图像分组的 Key（Image Lite / Image Plus 是独立分组） |
-| `image.defaultModel` | 空 | 留空时取该 key 扫到的第一个固定价模型 |
-| `image.maxUsdPerCall` | `0.5` | 图像单次绝对上限 |
-| `video.enabled` | `false` | **是否允许调用视频 API** |
-| `video.apiKey` | 空 | 视频分组的 Key（Video Plus） |
-| `video.defaultModel` | 空 | 留空时取该 key 扫到的第一个模型 |
-| `video.maxUsdPerCall` | `1.5` | 视频单次绝对上限 |
-| `limits.perCallUsd` | `0.1` | 单次上限（与上面两个取较小者） |
-| `limits.totalUsd` | `1.0` | 总额上限 |
-| `limits.totalScope` | `day` | `day` / `session` / `all` |
-| `limits.perMinute` | `6` | 每分钟最多调用次数 |
-| `outputDir` | 空 | 留空用 `<插件目录>/data/output` |
-
-> **限额改动后统计基线重置**：fingerprint 一变就把 `baselineAt` 推到当前时刻，
-> 总量从新起点算，历史流水保留。
-
-## 工具
-
-| 工具 | 作用 | 花钱 |
-|---|---|---|
-| `wegoo_models` | 扫两个 key，列出真正能调的模型与单价 | 否 |
-| `wegoo_image` | 固定价出图，落盘 + 附件 | 是 |
-| `wegoo_video` | 建任务 → 轮询 → 下载 → 结算 | 是 |
-| `wegoo_usage` | 逐条请求日志 + 本地账本 | 否 |
-| `wegoo_panel` | 生成结算面板 HTML | 否 |
-
-## 费用是怎么算的
-
-**唯一可信来源是 `/api/log/token`**。每个请求带一个 `quota` 字段：
-
-```
-1 USD = 500,000 quota
-```
-
-调用前后各抓一次日志，按 `id` 取差集求和 —— 这就是精确到单次请求的金额。
-
-> `/v1/dashboard/billing/usage` 不能用：它忽略日期参数，永远返回同一个账户总额。
-
-计价两种：
-
-| `quota_type` | 含义 | 报价 |
-|---|---|---|
-| `1` | 固定价，`model_price` 即单次美元价 | **精确**（图像） |
-| `0` | 按 token，`model_ratio` 倍率 | 需要校准（视频） |
-
-## 视频必须先校准
-
-视频按 token 计费，一次 `5s@720p` 到底多少 token 无法预知。**没有校准数据时工具直接拒绝报价**，不会瞎猜。
-
-跑通一次后回填 `<插件目录>/data/calibration.json`：
-
-```json
-{
-  "wan3-15|5|720p": { "rangeUsd": [0.28, 0.42], "samples": 1 }
-}
-```
-
-键的格式是 `模型|时长|分辨率`（缺省用空串）。
-
-## 结算面板
-
-`wegoo_panel` 生成 `<插件目录>/data/panel.html`，是一个自包含页面（无外部依赖）：
-
-- 顶部额度尺 + 作用域小计
-- 时间倒序的滚动流水，跨日分组带小计
-- 每条显示 `报价 → 结算` 与偏差
-- 状态：`●` 运行中 / `✓` 完成 / `✕` 失败 / `⊘` 中止
-
-## 已知限制
-
-- **子智能体只能事后结算**：靠 `tool/call` 记游标、`tool/result` 取差额，调用本身无法在中途拦住；
-  同一 key 并发跑多个子智能体时，差额会互相串账（建议每个来源用独立的 key）。
-- **配置实时生效依赖 settings 提供方**：已挂载 `@deepseek-ai/dsh-settings-file`，
-  改完限额/开关会立即生效；若该提供方没起来，插件回退到启动时的组合配置，需重启。
-- **拿不到账户余额**：`sk-` 权限下 `/api/user/self` 返回 401，只能显示累计已花。
-
-## 自检
-
-```bash
-node test/smoke.mjs   # 预算 / 账本 / 面板 纯逻辑
-node test/host.mjs    # 模拟 ctx 跑 apply()，检查工具契约
-```
+<!-- 预览：docs/settings-form.png（配置表单）、docs/settings-skill.png（触发描述弹窗）、docs/ui-pill.png（结算角标） -->

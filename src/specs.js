@@ -13,7 +13,6 @@ export const MODELS_TOOL = 'wegoo_models';
 export const IMAGE_TOOL = 'wegoo_image';
 export const VIDEO_TOOL = 'wegoo_video';
 export const USAGE_TOOL = 'wegoo_usage';
-export const PANEL_TOOL = 'wegoo_panel';
 
 /** 把生效限额写进工具描述，模型一眼能看到闸门在哪。 */
 export function limitsHint(limits = DEFAULT_LIMITS) {
@@ -156,34 +155,6 @@ export function usageSpec() {
         additionalProperties: false,
         properties: {
           text: { type: 'string', required: true, description: 'Cost table.' },
-        },
-      },
-      render(args, value) {
-        return [{ type: 'text', text: value.text }];
-      },
-    },
-  };
-}
-
-export function panelSpec() {
-  return {
-    name: PANEL_TOOL,
-    description: [
-      'Regenerate the wegoo settlement panel as an HTML file and return its path.',
-      '',
-      'The panel is a rolling window over the local ledger: subagent runs, image calls and video',
-      'calls share one list, newest first, with quote vs settled amounts and the budget meter.',
-      'Open the returned path to view it.',
-    ].join('\n'),
-    parameters: {
-      limit: { type: 'integer', description: 'Rows to include (default 200).' },
-    },
-    output: {
-      schema: {
-        type: 'object',
-        additionalProperties: false,
-        properties: {
-          text: { type: 'string', required: true, description: 'Path and a short summary.' },
         },
       },
       render(args, value) {

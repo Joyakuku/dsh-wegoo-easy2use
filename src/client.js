@@ -115,12 +115,6 @@
         .wgf-modal-h b{font-size:13.5px;font-weight:650}
         .wgf-modal-h p{margin-top:4px;font-size:11.5px;color:#98989d}
         .wgf-modal-b{padding:16px 20px}
-        .wgf-opt{display:flex;gap:9px;align-items:flex-start;padding:10px 12px;border:1px solid #ececf1;
-          border-radius:11px;margin-bottom:9px;cursor:pointer;transition:border-color .15s,background .15s}
-        .wgf-opt.on{border-color:#bfb6ff;background:#faf8ff}
-        .wgf-opt input{margin-top:2px}
-        .wgf-opt .t{font-weight:550}
-        .wgf-opt .d{font-size:11px;color:#98989d;margin-top:2px;line-height:1.45}
         .wgf-ta{width:100%;min-height:96px;padding:10px 11px;border:1px solid #ececf1;border-radius:10px;
           font:12.5px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace;outline:none;resize:vertical;color:#1d1d1f}
         .wgf-ta:focus{border-color:#bfb6ff;box-shadow:0 0 0 3px rgba(110,92,246,.14)}
@@ -222,7 +216,7 @@
                   if (cfg.videoKeySet) void loadModels('video', '');
                 }
               }
-              if (led) setLedger(led);
+              if (led) setLedger((prev) => (ledgerKey(prev) === ledgerKey(led) ? prev : led));
             } catch (e) {
               if (alive && first) setErr(String((e && e.message) || e));
             }
@@ -526,6 +520,13 @@
       }
 
       const EASE = 'cubic-bezier(.22,1,.36,1)';
+
+      /** 账本指纹：忽略 now 之类每次都会变的字段，只比较真正影响显示的内容。 */
+      function ledgerKey(l) {
+        if (!l) return 'none';
+        const rows = (l.entries || []).map((e) => `${e.id}:${e.settledUsd}`).join(',');
+        return `${l.spent}|${l.limit}|${l.remaining}|${l.scope}|${rows}`;
+      }
 
       const BADGE_CSS = `
         #wegoo-cost-badge{position:fixed;top:104px;left:0;z-index:2147483647;
@@ -982,7 +983,6 @@
       }
 
       function apply(ctx) {
-        WegooConfigPanel.__rpc = rpc;
         rpc('ping', { stage: 'apply', ua: navigator.userAgent.slice(0, 40) }).catch(() => {});
         try {
           mountBadge(rpc);

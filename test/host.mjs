@@ -90,7 +90,7 @@ assert.equal(typeof dispose, 'function', 'apply 必须返回 disposer');
 const names = registered.map((t) => t.name).sort();
 console.log('注册工具:', names.join(', '));
 assert.deepEqual(names, [
-  'wegoo_config', 'wegoo_image', 'wegoo_models', 'wegoo_panel', 'wegoo_usage', 'wegoo_video',
+  'wegoo_config', 'wegoo_image', 'wegoo_models', 'wegoo_usage', 'wegoo_video',
 ]);
 
 for (const tool of registered) {
@@ -121,12 +121,6 @@ await cfgTool.execute({ action: 'reset' });
 console.log('wegoo_config set/get/reset 正常');
 
 // 面板工具应当能落盘，而且落在临时数据目录里
-const panel = registered.find((t) => t.name === 'wegoo_panel');
-const panelOut = await panel.execute({ limit: 5 });
-assert.ok(panelOut.text.includes('panel.html'));
-assert.ok(panelOut.text.includes(path.join(dataRoot, 'panel.html')), `面板应写进临时目录，实际：${panelOut.text}`);
-assert.ok(fs.existsSync(path.join(dataRoot, 'panel.html')));
-console.log('wegoo_panel:', panelOut.text.split('\n')[0]);
 
 const sub = subscriptions.find((s) => s.event === 'session/event');
 assert.ok(sub, '必须订阅 session/event 才能结算子智能体');

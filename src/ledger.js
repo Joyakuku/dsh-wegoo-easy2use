@@ -38,9 +38,20 @@ export function newId(prefix = 'e') {
 }
 
 /** 读全部流水（容错：坏行跳过）。 */
+// 面板每 5 秒读一次账本；文件没变就不重复解析整份 JSONL。
+let entriesCache = { key: null, value: [] };
+
 export function readEntries() {
   const file = ledgerPath();
-  if (!fs.existsSync(file)) return [];
+  let stat;
+  try {
+    stat = fs.statSync(file);
+  } catch {
+    entriesCache = { key: null, value: [] };
+    return entriesCache.value;
+  }
+  const key = `${stat.mtimeMs}:${stat.size}`;
+  if (entriesCache.key === key) return entriesCache.value;
   const out = [];
   for (const line of fs.readFileSync(file, 'utf8').split('\n')) {
     const trimmed = line.trim();
@@ -51,6 +62,7 @@ export function readEntries() {
       /* 坏行忽略 */
     }
   }
+  entriesCache = { key, value: out };
   return out;
 }
 

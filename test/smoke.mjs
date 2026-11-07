@@ -14,7 +14,6 @@ process.env.HOME = tmp;
 const P = await import('../src/paths.js');
 const L = await import('../src/ledger.js');
 const { createSessionTracker } = await import('../src/session.js');
-const { renderPanel } = await import('../src/panel.js');
 const { formatModelTable, quotaToUsd } = await import('../src/catalog.js');
 const { estimateVideoUsd, estimateImageUsd, estimateTrafficUsd } = await import('../src/rates.js');
 
@@ -86,25 +85,6 @@ ok('限额改动触发基线重置', () => {
   assert.ok(c.baselineAt >= a.baselineAt);
 });
 
-ok('面板渲染', () => {
-  const html = renderPanel({
-    entries: [
-      { id: 'a', at: now, kind: 'image', label: 'gpt-image-2.5', quoteUsd: [0.03, 0.03], settledUsd: 0.03, requests: 1 },
-      { id: 'b', at: now - 5000, kind: 'video', label: 'wan3-15', quoteUsd: [0.28, 0.42], settledUsd: 0.31, requests: 1 },
-      { id: 'c', at: now - 9000, kind: 'subagent', label: 'claude-opus-5-5', settledUsd: 0.2841, requests: 3 },
-    ],
-    limits,
-    spent: 0.6241,
-    baselineAt: 0,
-    reset: false,
-    generatedAt: now,
-  });
-  assert.ok(html.includes('wegoo 结算'));
-  assert.ok(html.includes('$0.6241'));
-  assert.ok(html.includes('预估 $0.2800~$0.4200'));
-  assert.ok(html.includes('subagent'));
-});
-
 ok('模型表格式', () => {
   const text = formatModelTable('图像', {
     ok: true,
@@ -132,7 +112,7 @@ ok('数据目录：WEGOO_DATA_DIR 覆盖且不迁移', () => {
   assert.equal(P.dataDir(), path.resolve(dataRoot));
   assert.deepEqual(P.migrationStatus(), { migrated: false, reason: 'override', to: path.resolve(dataRoot) });
   for (const file of [P.configPath(), P.ledgerPath(), P.limitsPath(), P.ratesPath(), P.calibrationPath(),
-    P.pingLogPath(), P.panelPath(), P.outputDir()]) {
+    P.pingLogPath(), P.outputDir()]) {
     assert.ok(file.startsWith(path.resolve(dataRoot) + path.sep), `${file} 应在临时数据目录下`);
   }
   // syncBaseline 前面已经跑过：limits.json 必须落在临时目录，不能跑到旧的 ~/.dsh/wegoo

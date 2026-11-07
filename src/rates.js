@@ -119,11 +119,6 @@ export function learnFromRows(rows) {
   return changed;
 }
 
-/** 当前学习到的单价表（给诊断用）。 */
-export function readLearnedRates() {
-  return readRates();
-}
-
 /** 视频事前估价。 */
 export function estimateVideoUsd({ model, seconds, resolution, fallbackMidUsd }) {
   const rates = readRates();

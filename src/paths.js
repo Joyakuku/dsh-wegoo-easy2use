@@ -88,7 +88,6 @@ export const limitsPath = () => dataFile('limits.json');
 export const ratesPath = () => dataFile('rates.json');
 export const calibrationPath = () => dataFile('calibration.json');
 export const pingLogPath = () => dataFile('client-ping.log');
-export const panelPath = () => dataFile('panel.html');
 export const outputDir = () => dataFile('output');
 
 /** 插件自带技能文件（随包分发）。 */
